@@ -1,0 +1,12 @@
+{
+  "name": "おさんぽマップ",
+  "short_name": "おさんぽ",
+  "description": "GPSで散歩ルートを記録して、世界の目標地点までの進捗を楽しむアプリ",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f4f8f5",
+  "theme_color": "#2e8b57",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

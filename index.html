@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2e8b57">
+<title>おさんぽマップ 🚶</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header id="header">
+  <span class="logo">🚶 おさんぽマップ</span>
+  <span id="gps-status" class="gps-status">GPS待機中</span>
+</header>
+
+<!-- さんぽ画面 -->
+<main id="tab-walk" class="tab-page active">
+  <div id="walk-map" class="map"></div>
+
+  <div id="live-stats" class="live-stats hidden">
+    <div class="stat"><span class="stat-value" id="stat-time">0:00</span><span class="stat-label">時間</span></div>
+    <div class="stat"><span class="stat-value" id="stat-dist">0.00</span><span class="stat-label">km</span></div>
+    <div class="stat"><span class="stat-value" id="stat-steps">0</span><span class="stat-label">歩</span></div>
+  </div>
+
+  <button id="btn-walk" class="btn-walk">さんぽ<br>スタート</button>
+</main>
+
+<!-- きろく画面 -->
+<main id="tab-history" class="tab-page">
+  <div class="page-inner">
+    <h2>📖 さんぽのきろく</h2>
+    <div id="history-summary" class="summary-cards"></div>
+
+    <div class="cond-card">
+      <div id="cond-title" class="cond-title">きょうの体調・体重</div>
+      <div class="cond-btns" id="cond-btns">
+        <button data-cond="good"><span class="face face-good">😊</span><span>良い</span></button>
+        <button data-cond="normal"><span class="face">😐</span><span>普通</span></button>
+        <button data-cond="bad"><span class="face face-bad">😞</span><span>悪い</span></button>
+      </div>
+      <div class="weight-row">
+        <span class="weight-label">⚖️ 体重</span>
+        <input type="number" id="weight-input" step="0.1" min="20" max="200" placeholder="--.-" inputmode="decimal">
+        <span class="weight-unit">kg</span>
+        <button id="btn-weight-save" class="btn-small">記録</button>
+      </div>
+    </div>
+
+    <div class="calendar-card">
+      <div class="cal-header">
+        <button id="cal-prev" class="cal-nav">‹</button>
+        <div id="cal-title" class="cal-title"></div>
+        <button id="cal-next" class="cal-nav">›</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+    </div>
+
+    <div class="weight-card hidden" id="weight-card">
+      <div class="weight-title">⚖️ 体重のうつりかわり</div>
+      <svg id="weight-chart" viewBox="0 0 300 110"></svg>
+    </div>
+
+    <div id="list-filter-bar" class="list-filter hidden"></div>
+    <ul id="history-list" class="history-list"></ul>
+  </div>
+</main>
+
+<!-- もくひょう画面 -->
+<main id="tab-goal" class="tab-page">
+  <div class="page-inner">
+    <h2>🌍 もくひょう</h2>
+
+    <label class="field-label">どこまで歩く？
+      <select id="goal-select"></select>
+    </label>
+
+    <div id="goal-progress-card" class="goal-card">
+      <div id="goal-title" class="goal-title"></div>
+      <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+      <div id="goal-text" class="goal-text"></div>
+    </div>
+
+    <div id="goal-map" class="goal-map"></div>
+
+    <details class="settings">
+      <summary>⚙️ せってい</summary>
+      <label class="field-label">歩幅（cm）※歩数の推定に使います
+        <input type="number" id="stride-input" min="30" max="120" step="1">
+      </label>
+      <label class="field-label">出発地点
+        <button id="btn-set-home" class="btn-small">現在地を出発地点にする</button>
+        <span id="home-text" class="home-text"></span>
+      </label>
+    </details>
+  </div>
+</main>
+
+<!-- タブバー -->
+<nav id="tabbar">
+  <button class="tab-btn active" data-tab="walk">🚶<span>さんぽ</span></button>
+  <button class="tab-btn" data-tab="history">📖<span>きろく</span></button>
+  <button class="tab-btn" data-tab="goal">🌍<span>もくひょう</span></button>
+</nav>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js?v=4"></script>
+</body>
+</html>
