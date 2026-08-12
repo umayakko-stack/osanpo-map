@@ -7,6 +7,12 @@
 
 "use strict";
 
+// 予期しないJSエラーで無反応になったとき、原因をヘッダーに表示する
+window.addEventListener("error", (e) => {
+  const el = document.getElementById("gps-status");
+  if (el) { el.textContent = "エラー: " + e.message; el.className = "gps-status err"; }
+});
+
 // ---------- 目標地点（出発地からの大圏距離で進捗計算） ----------
 const DESTINATIONS = {
   seoul:     { name: "🇰🇷 ソウル（韓国）",        lat: 37.5665,  lng: 126.9780 },
@@ -142,9 +148,10 @@ const hereIcon = L.divIcon({
 const DEMO_MODE = new URLSearchParams(location.search).has("demo");
 
 // Capacitorネイティブ環境（Androidアプリ版）か。
-// アプリ版はバックグラウンド位置情報プラグインで画面オフでも記録が続く
-const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-const BgGeo = IS_NATIVE ? window.Capacitor.registerPlugin("BackgroundGeolocation") : null;
+// アプリ版はバックグラウンド位置情報プラグインで画面オフでも記録が続く。
+// __CapCore / __BgGeo は capacitor-bundle.js（esbuildで@capacitor/coreをバンドル）が定義する
+const IS_NATIVE = !!(window.__CapCore && window.__CapCore.isNativePlatform());
+const BgGeo = IS_NATIVE ? window.__BgGeo : null;
 let bgWatcherId = null;
 
 let walking = false;
@@ -293,7 +300,11 @@ function startGeolocation() {
         }
         onPosition(location.latitude, location.longitude, location.accuracy);
       }
-    ).then((id) => { bgWatcherId = id; });
+    ).then((id) => { bgWatcherId = id; })
+     .catch((e) => {
+        setGpsStatus("GPSエラー", "err");
+        alert("位置情報の開始に失敗しました:\n" + (e && e.message ? e.message : e));
+      });
     return;
   }
   if (!navigator.geolocation) {
