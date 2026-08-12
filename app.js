@@ -162,7 +162,7 @@ const pedometer = {
     // 移動平均との差でピーク検出
     pedometer.avg = pedometer.avg * 0.9 + mag * 0.1;
     const now = Date.now();
-    if (mag - pedometer.avg > 1.2 && now - pedometer.lastStepAt > 300) {
+    if (mag - pedometer.avg > 1.0 && now - pedometer.lastStepAt > 280) {
       pedometer.steps++;
       pedometer.lastStepAt = now;
     }
@@ -196,16 +196,23 @@ function setGpsStatus(text, cls) {
 function currentSteps() {
   if (!walk) return 0;
   const estimate = Math.round(walk.distance / (settings.strideCm / 100));
-  // センサーがまともに動いていればセンサー値、だめなら距離÷歩幅で推定
-  return pedometer.enabled && pedometer.steps > 10 ? pedometer.steps : estimate;
+  // センサー値と距離からの推定の大きい方を採用。
+  // 画面オフ中はセンサーが止まるので、その間の分は推定値が補う
+  return pedometer.enabled ? Math.max(pedometer.steps, estimate) : estimate;
 }
 
 function updateLiveStats() {
   if (!walk) return;
   const sec = Math.floor((Date.now() - walk.startTime) / 1000);
-  statTime.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
-  statDist.textContent = (walk.distance / 1000).toFixed(2);
-  statSteps.textContent = currentSteps().toLocaleString();
+  const time = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+  const dist = (walk.distance / 1000).toFixed(2);
+  const steps = currentSteps().toLocaleString();
+  statTime.textContent = time;
+  statDist.textContent = dist;
+  statSteps.textContent = steps;
+  $("#dim-time").textContent = time;
+  $("#dim-dist").textContent = dist;
+  $("#dim-steps").textContent = steps;
 }
 
 function onPosition(lat, lng, accuracy) {
@@ -222,15 +229,26 @@ function onPosition(lat, lng, accuracy) {
   if (!walking || !walk) return;
   if (accuracy != null && accuracy > 50) return; // 精度が悪い点は捨てる
 
+  const now = Date.now();
   const pts = walk.points;
   if (pts.length > 0) {
     const [plat, plng] = pts[pts.length - 1];
     const d = haversine(plat, plng, lat, lng);
-    if (d < 3) return;        // 3m未満はGPSの揺れとみなす
-    if (d > 200) return;      // 一瞬で200m飛ぶのは異常値
-    walk.distance += d;
+    if (d < 3) return; // 3m未満はGPSの揺れとみなす
+    const dt = Math.max((now - walk.lastFixAt) / 1000, 1);
+    const speed = d / dt; // m/s
+    if (speed <= 4) {
+      // 徒歩〜小走り相当（時速14km以下）なら計上。
+      // 画面オフ等で間が空いた区間も、再表示時に直線距離で補完される
+      walk.distance += d;
+    } else if (dt <= 60) {
+      return; // 短時間で大きく飛ぶのはGPSノイズ → 無視
+    }
+    // 長い空白の後に徒歩ではありえない移動（乗り物など）
+    // → 距離には入れず、現在地から記録を再開する
   }
   pts.push([lat, lng]);
+  walk.lastFixAt = now;
   routeLine.addLatLng([lat, lng]);
   walkMap.panTo([lat, lng]);
   updateLiveStats();
@@ -272,6 +290,7 @@ function stopGeolocation() {
 
 async function acquireWakeLock() {
   try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {}
+  return !!wakeLock;
 }
 document.addEventListener("visibilitychange", () => {
   if (walking && document.visibilityState === "visible") acquireWakeLock();
@@ -279,7 +298,7 @@ document.addEventListener("visibilitychange", () => {
 
 async function startWalk() {
   walking = true;
-  walk = { startTime: Date.now(), points: [], distance: 0 };
+  walk = { startTime: Date.now(), points: [], distance: 0, lastFixAt: Date.now() };
 
   if (routeLine) walkMap.removeLayer(routeLine);
   if (historyLine) { walkMap.removeLayer(historyLine); historyLine = null; }
@@ -293,7 +312,16 @@ async function startWalk() {
 
   await pedometer.start();   // iOSの許可ダイアログはここで出る
   startGeolocation();
-  acquireWakeLock();
+  const wlOk = await acquireWakeLock();
+
+  // 画面オフ中は記録が止まる旨を通知（10秒で消える）
+  const hint = $("#walk-hint");
+  hint.innerHTML = wlOk
+    ? "📱 画面を消すと記録が止まります（画面は自動で消えません）<br>🔋ボタンで省電力画面にできます"
+    : "📱 画面を消すと記録が止まります。<br>スリープしないよう画面をつけたままにしてください";
+  hint.classList.remove("hidden");
+  clearTimeout(startWalk._hintTimer);
+  startWalk._hintTimer = setTimeout(() => hint.classList.add("hidden"), 10000);
 }
 
 function stopWalk() {
@@ -307,6 +335,8 @@ function stopWalk() {
   btnWalk.innerHTML = "さんぽ<br>スタート";
   btnWalk.classList.remove("walking");
   liveStats.classList.add("hidden");
+  $("#walk-hint").classList.add("hidden");
+  $("#dim-overlay").classList.add("hidden");
 
   const durationSec = Math.floor((Date.now() - walk.startTime) / 1000);
   const record = {
@@ -374,6 +404,10 @@ function showDoneDialog(rec) {
 }
 
 btnWalk.addEventListener("click", () => (walking ? stopWalk() : startWalk()));
+
+// 省電力画面（黒画面）: 🔋で表示、タップで戻る
+$("#btn-dim").addEventListener("click", () => $("#dim-overlay").classList.remove("hidden"));
+$("#dim-overlay").addEventListener("click", () => $("#dim-overlay").classList.add("hidden"));
 
 // ---------- きろく画面 ----------
 function fmtDate(iso) {

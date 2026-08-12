@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -27,9 +27,19 @@
     <div class="stat"><span class="stat-value" id="stat-time">0:00</span><span class="stat-label">時間</span></div>
     <div class="stat"><span class="stat-value" id="stat-dist">0.00</span><span class="stat-label">km</span></div>
     <div class="stat"><span class="stat-value" id="stat-steps">0</span><span class="stat-label">歩</span></div>
+    <button id="btn-dim" class="btn-dim" title="省電力画面">🔋</button>
   </div>
 
+  <div id="walk-hint" class="walk-hint hidden"></div>
+
   <button id="btn-walk" class="btn-walk">さんぽ<br>スタート</button>
+
+  <!-- 省電力画面（黒画面・タップで戻る） -->
+  <div id="dim-overlay" class="dim-overlay hidden">
+    <div class="dim-time" id="dim-time">0:00</div>
+    <div class="dim-row"><span id="dim-dist">0.00</span> km ・ <span id="dim-steps">0</span> 歩</div>
+    <div class="dim-note">きろく中 🚶 タップで画面に戻る</div>
+  </div>
 </main>
 
 <!-- きろく画面 -->
@@ -110,6 +120,6 @@
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
