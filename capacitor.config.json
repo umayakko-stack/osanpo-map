@@ -1,0 +1,8 @@
+{
+  "appId": "com.umayakko.osanpo",
+  "appName": "おさんぽマップ",
+  "webDir": "docs",
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "osanpo-map",
+  "version": "1.0.0",
+  "description": "GPSで散歩ルートを記録して、地図にマッピング。歩数・距離を計測し、 「フランスまで歩く」「南極まで歩く」などの目標への進捗を楽しむWEBアプリ。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/umayakko-stack/osanpo-map.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/umayakko-stack/osanpo-map/issues"
+  },
+  "homepage": "https://github.com/umayakko-stack/osanpo-map#readme",
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
+  }
+}

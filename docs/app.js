@@ -141,6 +141,12 @@ const hereIcon = L.divIcon({
 // ---------- 散歩の記録 ----------
 const DEMO_MODE = new URLSearchParams(location.search).has("demo");
 
+// Capacitorネイティブ環境（Androidアプリ版）か。
+// アプリ版はバックグラウンド位置情報プラグインで画面オフでも記録が続く
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const BgGeo = IS_NATIVE ? window.Capacitor.registerPlugin("BackgroundGeolocation") : null;
+let bgWatcherId = null;
+
 let walking = false;
 let watchId = null;
 let demoTimer = null;
@@ -260,10 +266,34 @@ function startGeolocation() {
     let lat = settings.home.lat, lng = settings.home.lng, heading = Math.random() * Math.PI * 2;
     demoTimer = setInterval(() => {
       heading += (Math.random() - 0.5) * 0.8;
-      lat += Math.cos(heading) * 0.00008;
-      lng += Math.sin(heading) * 0.00008;
+      lat += Math.cos(heading) * 0.00003; // 秒速約3.3m（徒歩〜小走り相当）
+      lng += Math.sin(heading) * 0.00003;
       onPosition(lat, lng, 10);
     }, 1000);
+    return;
+  }
+  if (IS_NATIVE) {
+    // アプリ版: フォアグラウンドサービス＋通知で画面オフでも記録継続
+    BgGeo.addWatcher(
+      {
+        backgroundMessage: "さんぽを記録しています",
+        backgroundTitle: "おさんぽマップ 🚶",
+        requestPermissions: true,
+        stale: false,
+        distanceFilter: 2,
+      },
+      (location, error) => {
+        if (error) {
+          setGpsStatus("GPSエラー", "err");
+          if (error.code === "NOT_AUTHORIZED" &&
+              confirm("位置情報が許可されていません。\n設定画面を開きますか？")) {
+            BgGeo.openSettings();
+          }
+          return;
+        }
+        onPosition(location.latitude, location.longitude, location.accuracy);
+      }
+    ).then((id) => { bgWatcherId = id; });
     return;
   }
   if (!navigator.geolocation) {
@@ -284,6 +314,7 @@ function startGeolocation() {
 }
 
 function stopGeolocation() {
+  if (bgWatcherId) { BgGeo.removeWatcher({ id: bgWatcherId }).catch(() => {}); bgWatcherId = null; }
   if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; }
   if (demoTimer) { clearInterval(demoTimer); demoTimer = null; }
 }
@@ -293,7 +324,7 @@ async function acquireWakeLock() {
   return !!wakeLock;
 }
 document.addEventListener("visibilitychange", () => {
-  if (walking && document.visibilityState === "visible") acquireWakeLock();
+  if (!IS_NATIVE && walking && document.visibilityState === "visible") acquireWakeLock();
 });
 
 async function startWalk() {
@@ -312,11 +343,14 @@ async function startWalk() {
 
   await pedometer.start();   // iOSの許可ダイアログはここで出る
   startGeolocation();
-  const wlOk = await acquireWakeLock();
+  // アプリ版は画面オフでも記録が続くのでスリープ防止は不要
+  const wlOk = IS_NATIVE ? true : await acquireWakeLock();
 
-  // 画面オフ中は記録が止まる旨を通知（10秒で消える）
+  // 記録の継続条件を通知（10秒で消える）
   const hint = $("#walk-hint");
-  hint.innerHTML = wlOk
+  hint.innerHTML = IS_NATIVE
+    ? "📱 アプリ版: 画面を消してポケットに入れてもOK！<br>記録はバックグラウンドで続きます 🚶"
+    : wlOk
     ? "📱 画面を消すと記録が止まります（画面は自動で消えません）<br>🔋ボタンで省電力画面にできます"
     : "📱 画面を消すと記録が止まります。<br>スリープしないよう画面をつけたままにしてください";
   hint.classList.remove("hidden");
