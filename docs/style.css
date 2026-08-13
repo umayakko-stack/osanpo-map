@@ -107,7 +107,7 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .step-goal-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--green), var(--orange));
+  background: var(--orange);
   border-radius: 5px;
   transition: width .5s ease;
 }
