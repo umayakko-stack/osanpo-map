@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 
@@ -46,19 +46,31 @@
 
   <div id="stepper-overlay" class="walk-done-overlay hidden">
     <div class="walk-done-card">
-      <!-- 時間えらび -->
+      <!-- 時間えらび（ルーレット） -->
       <div id="stepper-setup">
         <h3>🦵 ステッパーうんどう</h3>
-        <div class="cond-q">何分うんどうする？</div>
-        <div class="stepper-mins" id="stepper-mins">
-          <button data-min="5">5分</button>
-          <button data-min="10">10分</button>
-          <button data-min="15">15分</button>
-          <button data-min="20">20分</button>
-          <button data-min="30">30分</button>
-          <button id="stepper-custom">じぶんで決める</button>
+        <div class="cond-q">ルーレットで時間をきめよう！</div>
+        <div class="roulette-wrap">
+          <div class="roulette-pointer">▼</div>
+          <svg id="roulette-wheel" viewBox="-100 -100 200 200">
+            <path d="M0 0 L0 -90 A90 90 0 0 1 90 0 Z" fill="#2e8b57"/>
+            <path d="M0 0 L90 0 A90 90 0 0 1 0 90 Z" fill="#ff8c42"/>
+            <path d="M0 0 L0 90 A90 90 0 0 1 -90 0 Z" fill="#4a90d9"/>
+            <path d="M0 0 L-90 0 A90 90 0 0 1 0 -90 Z" fill="#e05252"/>
+            <text x="38.9" y="-38.9" class="roulette-label">1分</text>
+            <text x="38.9" y="38.9" class="roulette-label">2分</text>
+            <text x="-38.9" y="38.9" class="roulette-label">3分</text>
+            <text x="-38.9" y="-38.9" class="roulette-label">4分</text>
+            <circle cx="0" cy="0" r="12" fill="#fff"/>
+            <text x="0" y="0" class="roulette-center">🦵</text>
+          </svg>
         </div>
-        <button id="stepper-cancel" class="btn-close btn-gray">やめておく</button>
+        <div id="roulette-result" class="roulette-result"></div>
+        <button id="btn-spin" class="btn-close">🎲 ルーレットをまわす！</button>
+        <div class="stepper-sub">
+          <button id="stepper-custom" class="btn-close btn-gray">じぶんで決める</button>
+          <button id="stepper-cancel" class="btn-close btn-gray">やめておく</button>
+        </div>
       </div>
       <!-- カウントダウン -->
       <div id="stepper-run" class="hidden">
@@ -202,6 +214,6 @@
 
 <script src="leaflet.js"></script>
 <script src="capacitor-bundle.js?v=7"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

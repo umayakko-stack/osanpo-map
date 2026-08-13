@@ -488,11 +488,43 @@ $("#btn-stepper").addEventListener("click", () => {
 $("#stepper-cancel").addEventListener("click", () =>
   $("#stepper-overlay").classList.add("hidden"));
 
-document.querySelectorAll("#stepper-mins button").forEach((b) =>
-  b.addEventListener("click", () => {
-    if (b.dataset.min) startStepper(parseInt(b.dataset.min, 10));
-  })
-);
+// ルーレットで時間(1〜4分)を決める。
+// 結果を先に抽選し、その区画の中央±30°に針が来る回転角を計算する
+let rouletteSpinning = false;
+let rouletteTurns = 0; // 回転角は累積させる（毎回4回転ずつ増やして常に前へ回す）
+$("#btn-spin").addEventListener("click", () => {
+  if (rouletteSpinning || stepperState) return;
+  rouletteSpinning = true;
+  $("#btn-spin").disabled = true;
+  $("#roulette-result").textContent = "まわっています…";
+
+  // 終了音用のAudioContextはユーザー操作（このタップ）の中で作る必要がある
+  let ctx = null;
+  try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+
+  const min = 1 + Math.floor(Math.random() * 4);
+  const jitter = Math.random() * 60 - 30;
+  rouletteTurns += 4;
+  const angle = rouletteTurns * 360 + (360 - ((min - 1) * 90 + 45 + jitter));
+  $("#roulette-wheel").style.transform = `rotate(${angle}deg)`;
+
+  // 停止処理はtransitionendと保険タイマーの早い方（タブ非表示だとtransitionendが来ないことがある）
+  let settled = false;
+  const settle = () => {
+    if (settled) return;
+    settled = true;
+    $("#roulette-result").textContent = `🎯 ${min}分にきまり！`;
+    setTimeout(() => {
+      rouletteSpinning = false;
+      $("#btn-spin").disabled = false;
+      // 結果表示の間に「やめておく」で閉じられていたら開始しない
+      if (stepperState || $("#stepper-overlay").classList.contains("hidden")) return;
+      if (!$("#stepper-setup").classList.contains("hidden")) startStepper(min, ctx);
+    }, 1400);
+  };
+  $("#roulette-wheel").addEventListener("transitionend", settle, { once: true });
+  setTimeout(settle, 3600);
+});
 $("#stepper-custom").addEventListener("click", () => {
   const raw = prompt("何分うんどうしますか？（1〜180）", "10");
   if (raw == null) return;
@@ -502,13 +534,17 @@ $("#stepper-custom").addEventListener("click", () => {
   startStepper(v);
 });
 
-async function startStepper(min) {
-  stepperState = { startTime: Date.now(), plannedSec: min * 60, ctx: null };
-  // 終了音用のAudioContextはユーザー操作（このタップ）の中で作る必要がある
-  try { stepperState.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+async function startStepper(min, ctx) {
+  stepperState = { startTime: Date.now(), plannedSec: min * 60, ctx: ctx || null };
+  // 終了音用のAudioContextはユーザー操作の中で作る必要がある
+  // （ルーレット経由の場合は「まわす」タップ時に作ったものを受け取る）
+  if (!stepperState.ctx) {
+    try { stepperState.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+  }
   stepperShow("#stepper-run");
-  updateStepperRemain();
+  // intervalを先にセット（updateStepperRemainは interval==null だと何もしないため）
   stepperState.interval = setInterval(updateStepperRemain, 250);
+  updateStepperRemain();
   await pedometer.start();
   if (!IS_NATIVE) acquireWakeLock(); // 画面を消させない（タイマーが止まらないように）
 }

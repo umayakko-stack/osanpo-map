@@ -157,23 +157,56 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .btn-stepper.hidden { display: none; }
 .walk-done-overlay.hidden { display: none; }
 #stepper-setup.hidden, #stepper-run.hidden, #stepper-done.hidden { display: none; }
-.stepper-mins {
+/* ルーレット */
+.roulette-wrap {
+  position: relative;
+  width: 190px;
+  margin: 8px auto 6px;
+}
+#roulette-wheel {
+  width: 100%;
+  display: block;
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  transition: transform 3.2s cubic-bezier(.12, .85, .25, 1);
+}
+.roulette-pointer {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 20px;
+  color: #e05252;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+.roulette-label {
+  fill: #fff;
+  font-size: 21px;
+  font-weight: bold;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.roulette-center {
+  font-size: 13px;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.roulette-result {
+  min-height: 26px;
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--green-dark);
+  margin: 6px 0 8px;
+}
+.stepper-sub {
   display: flex;
-  flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-top: 12px;
 }
-.stepper-mins button {
-  border: none;
-  background: var(--green);
-  color: #fff;
-  font-size: 15px;
-  font-weight: bold;
-  padding: 12px 16px;
-  border-radius: 12px;
-  cursor: pointer;
-}
+.stepper-sub .btn-close { font-size: 13px; padding: 8px 14px; }
+#btn-spin:disabled { opacity: .55; }
 .stepper-remain {
   font-size: 58px;
   font-weight: bold;
