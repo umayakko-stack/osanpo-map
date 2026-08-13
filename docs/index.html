@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
@@ -22,6 +22,12 @@
 <!-- さんぽ画面 -->
 <main id="tab-walk" class="tab-page active">
   <div id="walk-map" class="map"></div>
+
+  <!-- 1日の目標歩数の進捗（せっていで目標を入れると表示） -->
+  <div id="step-goal-bar" class="step-goal-bar hidden">
+    <div id="step-goal-text" class="step-goal-text"></div>
+    <div class="step-goal-track"><div id="step-goal-fill" class="step-goal-fill"></div></div>
+  </div>
 
   <div id="live-stats" class="live-stats hidden">
     <div class="stat"><span class="stat-value" id="stat-time">0:00</span><span class="stat-label">時間</span></div>
@@ -91,6 +97,18 @@
       <select id="goal-select"></select>
     </label>
 
+    <div class="custom-goal">
+      <button id="btn-add-goal" class="btn-small">＋ じぶんの目標地点をつくる</button>
+      <div id="custom-goal-box" class="custom-goal-box hidden">
+        <div class="custom-goal-row">
+          <input type="text" id="goal-search-input" placeholder="地名を入力（例: 京都駅、富士山）">
+          <button id="btn-goal-search" class="btn-small">さがす</button>
+        </div>
+        <ul id="goal-search-results" class="goal-results"></ul>
+      </div>
+      <button id="btn-del-goal" class="btn-small btn-danger hidden">🗑 いまのカスタム目標を削除</button>
+    </div>
+
     <div id="goal-progress-card" class="goal-card">
       <div id="goal-title" class="goal-title"></div>
       <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
@@ -103,6 +121,9 @@
       <summary>⚙️ せってい</summary>
       <label class="field-label">歩幅（cm）※歩数の推定に使います
         <input type="number" id="stride-input" min="30" max="120" step="1">
+      </label>
+      <label class="field-label">1日の目標歩数 ※さんぽ画面に進捗バーが出ます（0または空欄でオフ）
+        <input type="number" id="step-goal-input" min="0" max="100000" step="500" placeholder="例: 8000" inputmode="numeric">
       </label>
       <label class="field-label">出発地点
         <button id="btn-set-home" class="btn-small">現在地を出発地点にする</button>
@@ -139,6 +160,6 @@
 
 <script src="leaflet.js"></script>
 <script src="capacitor-bundle.js?v=7"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
