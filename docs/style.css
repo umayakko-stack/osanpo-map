@@ -404,6 +404,22 @@ select, input[type="number"] {
 }
 .home-text { display: block; margin-top: 6px; font-size: 12px; }
 
+/* 無地マップ: タイルだけ色を抜く（ルート線やマーカーはそのまま） */
+body.plain-map .leaflet-tile-pane {
+  filter: grayscale(1) brightness(1.07) contrast(0.9);
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.checkbox-label input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--green);
+}
+
 /* バックアップ・復元 */
 .backup-section { margin-top: 4px; }
 .backup-info { margin-top: 6px; font-size: 12px; }

@@ -57,6 +57,7 @@ const store = {
       strideCm: 70,                       // 歩幅
       goal: "paris",                      // 目標地点
       home: { lat: 35.6812, lng: 139.7671, label: "東京駅（初期値）" },
+      plainMap: true,                     // 無地マップ（タイルの色を抜く）
     }, s);
   },
   saveSettings(s) {
@@ -802,6 +803,17 @@ strideInput.addEventListener("change", () => {
 function renderHomeText() {
   $("#home-text").textContent = `現在: ${settings.home.label}`;
 }
+
+// 無地マップの適用（さんぽ・もくひょう両方の地図タイルに効く）
+function applyPlainMap() {
+  document.body.classList.toggle("plain-map", !!settings.plainMap);
+  $("#plain-map-toggle").checked = !!settings.plainMap;
+}
+$("#plain-map-toggle").addEventListener("change", (e) => {
+  settings.plainMap = e.target.checked;
+  store.saveSettings(settings);
+  applyPlainMap();
+});
 $("#btn-set-home").addEventListener("click", () => {
   if (!navigator.geolocation) return alert("GPS非対応です");
   navigator.geolocation.getCurrentPosition(
@@ -882,6 +894,7 @@ function restoreBackup(text) {
     if (DESTINATIONS[settings.goal]) goalSelect.value = settings.goal;
     strideInput.value = settings.strideCm;
     renderHomeText();
+    applyPlainMap();
   }
 
   renderHistory();
@@ -961,6 +974,7 @@ document.querySelectorAll(".tab-btn").forEach((b) =>
 // ---------- 初期化 ----------
 renderHistory();
 renderHomeText();
+applyPlainMap();
 if (!DEMO_MODE && navigator.geolocation) {
   // 起動時に現在地へ移動（記録はしない）
   navigator.geolocation.getCurrentPosition(
