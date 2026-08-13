@@ -102,6 +102,25 @@ h2 { font-size: 18px; margin-bottom: 14px; }
   z-index: 500;
 }
 .step-goal-bar.hidden { display: none; }
+.step-goal-bar { cursor: pointer; }
+/* 目標未設定時の「目標をきめる」ボタン */
+.step-goal-set {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  border: none;
+  background: rgba(255,255,255,.95);
+  color: #2b3a32;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  cursor: pointer;
+}
+.step-goal-set.hidden { display: none; }
 .step-goal-text { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
 .step-goal-track { height: 10px; background: #e3ece6; border-radius: 5px; overflow: hidden; }
 .step-goal-fill {

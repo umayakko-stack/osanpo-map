@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
 
@@ -23,11 +23,12 @@
 <main id="tab-walk" class="tab-page active">
   <div id="walk-map" class="map"></div>
 
-  <!-- 1日の目標歩数の進捗（せっていで目標を入れると表示） -->
+  <!-- 1日の目標歩数の進捗（タップで目標を変更。未設定時は下のボタンを表示） -->
   <div id="step-goal-bar" class="step-goal-bar hidden">
     <div id="step-goal-text" class="step-goal-text"></div>
     <div class="step-goal-track"><div id="step-goal-fill" class="step-goal-fill"></div></div>
   </div>
+  <button id="btn-set-step-goal" class="step-goal-set hidden">🎯 1日の目標歩数をきめる</button>
 
   <div id="live-stats" class="live-stats hidden">
     <div class="stat"><span class="stat-value" id="stat-time">0:00</span><span class="stat-label">時間</span></div>
@@ -160,6 +161,6 @@
 
 <script src="leaflet.js"></script>
 <script src="capacitor-bundle.js?v=7"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
