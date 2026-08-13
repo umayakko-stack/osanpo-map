@@ -58,6 +58,8 @@ const store = {
       goal: "paris",                      // 目標地点
       home: { lat: 35.6812, lng: 139.7671, label: "東京駅（初期値）" },
       plainMap: true,                     // 無地マップ（タイルの色を抜く）
+      customDests: {},                    // カスタム目標地点 { "c<id>": {name, lat, lng} }
+      dailyStepGoal: 0,                   // 1日の目標歩数（0 = オフ）
     }, s);
   },
   saveSettings(s) {
@@ -66,6 +68,11 @@ const store = {
 };
 
 let settings = store.loadSettings();
+
+// 目標地点（組み込み or カスタム）をキーから取得
+function getDest(key) {
+  return DESTINATIONS[key] || settings.customDests[key] || null;
+}
 
 // ---------- 体調（日付ごとに1つ記録） ----------
 const CONDITIONS = {
@@ -227,6 +234,7 @@ function updateLiveStats() {
   $("#dim-time").textContent = time;
   $("#dim-dist").textContent = dist;
   $("#dim-steps").textContent = steps;
+  renderStepGoal(); // 記録中の歩数も進捗バーに反映
 }
 
 function onPosition(lat, lng, accuracy) {
@@ -411,7 +419,7 @@ function stopWalk() {
 function showDoneDialog(rec) {
   const min = Math.floor(rec.durationSec / 60);
   const totalKm = totalDistanceKm();
-  const dest = DESTINATIONS[settings.goal];
+  const dest = getDest(settings.goal) || DESTINATIONS.paris;
   const goalKm = goalDistanceKm();
   const pct = Math.min(100, (totalKm / goalKm) * 100);
 
@@ -621,6 +629,8 @@ function renderHistory() {
   renderWeightChart();
   renderFilterBar();
   renderBackupInfo();
+  invalidateTodaySteps();
+  renderStepGoal();
 
   const list = $("#history-list");
   const shown = historyFilterDate
@@ -712,8 +722,8 @@ let goalMap = null;
 let goalLayers = [];
 
 function goalDistanceKm() {
-  const d = DESTINATIONS[settings.goal];
-  return haversine(settings.home.lat, settings.home.lng, d.lat, d.lng) / 1000;
+  const d = getDest(settings.goal) || DESTINATIONS.paris;
+  return Math.max(0.1, haversine(settings.home.lat, settings.home.lng, d.lat, d.lng) / 1000);
 }
 
 function initGoalMap() {
@@ -723,7 +733,7 @@ function initGoalMap() {
 }
 
 function renderGoal() {
-  const dest = DESTINATIONS[settings.goal];
+  const dest = getDest(settings.goal) || DESTINATIONS.paris;
   const goalKm = goalDistanceKm();
   const totalKm = totalDistanceKm();
   const pct = Math.min(100, (totalKm / goalKm) * 100);
@@ -773,23 +783,141 @@ function renderGoal() {
   goalMap.fitBounds(line.getBounds(), { padding: [30, 30] });
 }
 
-// 目標選択セレクトボックス
+// 目標選択セレクトボックス（組み込み＋カスタムを合わせて構築）
 const goalSelect = $("#goal-select");
-Object.entries(DESTINATIONS).forEach(([key, d]) => {
-  const opt = document.createElement("option");
-  opt.value = key;
-  const km = Math.round(haversine(settings.home.lat, settings.home.lng, d.lat, d.lng) / 1000);
-  opt.textContent = `${d.name}（約${km.toLocaleString()}km)`;
-  goalSelect.appendChild(opt);
-});
-goalSelect.value = settings.goal;
+function renderGoalSelect() {
+  goalSelect.innerHTML = "";
+  const all = Object.assign({}, DESTINATIONS, settings.customDests);
+  Object.entries(all).forEach(([key, d]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    const km = Math.round(haversine(settings.home.lat, settings.home.lng, d.lat, d.lng) / 1000);
+    opt.textContent = `${d.name}（約${km.toLocaleString()}km）`;
+    goalSelect.appendChild(opt);
+  });
+  // 選択中の目標が消えていたら（カスタム削除など）パリに戻す
+  if (!getDest(settings.goal)) {
+    settings.goal = "paris";
+    store.saveSettings(settings);
+  }
+  goalSelect.value = settings.goal;
+  $("#btn-del-goal").classList.toggle("hidden", !settings.customDests[settings.goal]);
+}
+renderGoalSelect();
 goalSelect.addEventListener("change", () => {
   settings.goal = goalSelect.value;
   store.saveSettings(settings);
+  $("#btn-del-goal").classList.toggle("hidden", !settings.customDests[settings.goal]);
   renderGoal();
 });
 
+// ---------- カスタム目標地点 ----------
+// 地名をOpenStreetMapの検索API（Nominatim）で探して座標を取得する
+$("#btn-add-goal").addEventListener("click", () => {
+  const box = $("#custom-goal-box");
+  box.classList.toggle("hidden");
+  if (!box.classList.contains("hidden")) $("#goal-search-input").focus();
+});
+
+async function searchPlace() {
+  const q = $("#goal-search-input").value.trim();
+  if (!q) { alert("地名を入力してください"); return; }
+  const list = $("#goal-search-results");
+  list.innerHTML = '<li class="searching">🔍 さがしています…</li>';
+  try {
+    const res = await fetch(
+      "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ja&q=" +
+      encodeURIComponent(q)
+    );
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const results = await res.json();
+    list.innerHTML = "";
+    if (results.length === 0) {
+      list.innerHTML = '<li class="searching">見つかりませんでした。別の書き方で試してください</li>';
+      return;
+    }
+    results.forEach((r) => {
+      const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+      const name = r.name || q;
+      const km = Math.round(haversine(settings.home.lat, settings.home.lng, lat, lng) / 1000);
+      const li = document.createElement("li");
+      const title = document.createElement("b");
+      title.textContent = `📍 ${name}（約${km.toLocaleString()}km）`;
+      const sub = document.createElement("small");
+      sub.textContent = r.display_name;
+      li.append(title, document.createElement("br"), sub);
+      li.addEventListener("click", () => addCustomDest(name, lat, lng));
+      list.appendChild(li);
+    });
+  } catch {
+    list.innerHTML = '<li class="searching">検索できませんでした。通信状態を確認してもう一度お試しください</li>';
+  }
+}
+$("#btn-goal-search").addEventListener("click", searchPlace);
+$("#goal-search-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); searchPlace(); }
+});
+
+function addCustomDest(name, lat, lng) {
+  const key = "c" + Date.now();
+  settings.customDests[key] = { name: "📍 " + name, lat, lng };
+  settings.goal = key;
+  store.saveSettings(settings);
+  renderGoalSelect();
+  renderGoal();
+  $("#custom-goal-box").classList.add("hidden");
+  $("#goal-search-results").innerHTML = "";
+  $("#goal-search-input").value = "";
+}
+
+$("#btn-del-goal").addEventListener("click", () => {
+  const d = settings.customDests[settings.goal];
+  if (!d) return;
+  if (!confirm(`「${d.name}」を目標から削除しますか？`)) return;
+  delete settings.customDests[settings.goal];
+  settings.goal = "paris";
+  store.saveSettings(settings);
+  renderGoalSelect();
+  renderGoal();
+});
+
+// ---------- 1日の目標歩数（さんぽ画面の進捗バー） ----------
+// 保存済み散歩の当日歩数はキャッシュ（記録中は毎秒呼ばれるため全件集計を避ける）
+let _todaySteps = { key: null, steps: 0 };
+function invalidateTodaySteps() { _todaySteps.key = null; }
+function todaySavedSteps() {
+  const k = todayKey();
+  if (_todaySteps.key !== k) {
+    const info = dailyTotals()[k];
+    _todaySteps = { key: k, steps: info ? info.steps : 0 };
+  }
+  return _todaySteps.steps;
+}
+
+function renderStepGoal() {
+  const bar = $("#step-goal-bar");
+  const goal = settings.dailyStepGoal;
+  if (!goal || goal <= 0) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  const steps = todaySavedSteps() + (walking && walk ? currentSteps() : 0);
+  const done = steps >= goal;
+  $("#step-goal-fill").style.width = Math.min(100, (steps / goal) * 100) + "%";
+  $("#step-goal-fill").classList.toggle("done", done);
+  $("#step-goal-text").textContent = done
+    ? `🎉 きょうの目標たっせい！ ${steps.toLocaleString()} / ${goal.toLocaleString()} 歩`
+    : `きょうの歩数 ${steps.toLocaleString()} / ${goal.toLocaleString()} 歩`;
+}
+
 // せってい
+const stepGoalInput = $("#step-goal-input");
+stepGoalInput.value = settings.dailyStepGoal || "";
+stepGoalInput.addEventListener("change", () => {
+  const v = parseInt(stepGoalInput.value, 10);
+  settings.dailyStepGoal = isNaN(v) || v <= 0 ? 0 : Math.min(v, 100000);
+  store.saveSettings(settings);
+  renderStepGoal();
+});
+
 const strideInput = $("#stride-input");
 strideInput.value = settings.strideCm;
 strideInput.addEventListener("change", () => {
@@ -825,6 +953,7 @@ $("#btn-set-home").addEventListener("click", () => {
       };
       store.saveSettings(settings);
       renderHomeText();
+      renderGoalSelect(); // 各目標までの距離表示を更新
       renderGoal();
       alert("出発地点を現在地に設定しました");
     },
@@ -891,8 +1020,9 @@ function restoreBackup(text) {
   if (data.settings && typeof data.settings === "object") {
     settings = Object.assign(store.loadSettings(), data.settings);
     store.saveSettings(settings);
-    if (DESTINATIONS[settings.goal]) goalSelect.value = settings.goal;
+    renderGoalSelect();
     strideInput.value = settings.strideCm;
+    stepGoalInput.value = settings.dailyStepGoal || "";
     renderHomeText();
     applyPlainMap();
   }

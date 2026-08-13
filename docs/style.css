@@ -89,6 +89,33 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .btn-walk:active { transform: translateX(-50%) scale(.95); }
 .btn-walk.walking { background: #e05252; }
 
+/* きょうの歩数進捗バー */
+.step-goal-bar {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  background: rgba(255,255,255,.95);
+  border-radius: 12px;
+  padding: 7px 12px 9px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  z-index: 500;
+}
+.step-goal-bar.hidden { display: none; }
+.step-goal-text { font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+.step-goal-track { height: 10px; background: #e3ece6; border-radius: 5px; overflow: hidden; }
+.step-goal-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--green), var(--orange));
+  border-radius: 5px;
+  transition: width .5s ease;
+}
+.step-goal-fill.done { background: var(--orange); }
+/* 進捗バー表示中はリアルタイム統計と注意メッセージを下にずらす */
+.step-goal-bar:not(.hidden) ~ .live-stats { top: 70px; }
+.step-goal-bar:not(.hidden) ~ .walk-hint { top: 144px; }
+
 /* リアルタイム統計 */
 .live-stats {
   position: absolute;
@@ -388,6 +415,35 @@ select, input[type="number"] {
 }
 .goal-text { font-size: 13px; margin-top: 10px; line-height: 1.6; }
 .goal-text .big { font-size: 20px; font-weight: bold; color: var(--orange); }
+
+/* カスタム目標地点 */
+.custom-goal { margin: -6px 0 16px; }
+.custom-goal-box { margin-top: 8px; }
+.custom-goal-box.hidden { display: none; }
+.custom-goal-row { display: flex; gap: 8px; }
+.custom-goal-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cfe0d5;
+  border-radius: 10px;
+  font-size: 15px;
+}
+.custom-goal-row .btn-small { margin-top: 0; white-space: nowrap; }
+.goal-results { list-style: none; margin: 8px 0 0; padding: 0; }
+.goal-results li {
+  background: var(--card);
+  border: 1px solid #dde7e0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.goal-results li small { color: var(--muted); font-size: 11px; }
+.goal-results li.searching { cursor: default; color: var(--muted); }
+.btn-danger { background: #e05252; }
+.btn-danger.hidden { display: none; }
 
 .settings { margin-top: 18px; font-size: 14px; }
 .settings summary { cursor: pointer; color: var(--muted); margin-bottom: 10px; }
