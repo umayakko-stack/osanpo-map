@@ -344,7 +344,7 @@ async function acquireWakeLock() {
   return !!wakeLock;
 }
 document.addEventListener("visibilitychange", () => {
-  if (!IS_NATIVE && walking && document.visibilityState === "visible") acquireWakeLock();
+  if (!IS_NATIVE && (walking || stepperState) && document.visibilityState === "visible") acquireWakeLock();
 });
 
 async function startWalk() {
@@ -357,6 +357,7 @@ async function startWalk() {
 
   btnWalk.textContent = "おわる";
   btnWalk.classList.add("walking");
+  $("#btn-stepper").classList.add("hidden");
   liveStats.classList.remove("hidden");
   updateLiveStats();
   timerInterval = setInterval(updateLiveStats, 1000);
@@ -388,6 +389,7 @@ function stopWalk() {
 
   btnWalk.innerHTML = "さんぽ<br>スタート";
   btnWalk.classList.remove("walking");
+  $("#btn-stepper").classList.remove("hidden");
   liveStats.classList.add("hidden");
   $("#walk-hint").classList.add("hidden");
   $("#dim-overlay").classList.add("hidden");
@@ -423,16 +425,19 @@ function showDoneDialog(rec) {
   const goalKm = goalDistanceKm();
   const pct = Math.min(100, (totalKm / goalKm) * 100);
 
+  const isStepper = rec.type === "stepper";
+  const statsHtml = isStepper
+    ? `🦵 ステッパー <b>${min}分</b><br>歩数は <b>${rec.steps.toLocaleString()} 歩</b>`
+    : `きょりは <b>${(rec.distanceM / 1000).toFixed(2)} km</b><br>
+       歩数は <b>${rec.steps.toLocaleString()} 歩</b>（${min}分）<br><br>
+       ${dest.name} まで<br>あと <b>${(goalKm - totalKm).toFixed(1)} km</b>（${pct.toFixed(1)}%）`;
+
   const overlay = document.createElement("div");
   overlay.className = "walk-done-overlay";
   overlay.innerHTML = `
     <div class="walk-done-card">
       <h3>🎉 おつかれさまでした！</h3>
-      <div class="done-stats">
-        きょりは <b>${(rec.distanceM / 1000).toFixed(2)} km</b><br>
-        歩数は <b>${rec.steps.toLocaleString()} 歩</b>（${min}分）<br><br>
-        ${dest.name} まで<br>あと <b>${(goalKm - totalKm).toFixed(1)} km</b>（${pct.toFixed(1)}%）
-      </div>
+      <div class="done-stats">${statsHtml}</div>
       <div class="cond-q">きょうの体調は？</div>
       <div class="cond-btns">
         ${Object.entries(CONDITIONS).map(([k, c]) =>
@@ -462,6 +467,134 @@ btnWalk.addEventListener("click", () => (walking ? stopWalk() : startWalk()));
 // 省電力画面（黒画面）: 🔋で表示、タップで戻る
 $("#btn-dim").addEventListener("click", () => $("#dim-overlay").classList.remove("hidden"));
 $("#dim-overlay").addEventListener("click", () => $("#dim-overlay").classList.add("hidden"));
+
+// ---------- ステッパー運動（タイマーで記録） ----------
+// GPS移動のない室内運動。時間と歩数を散歩と同じ記録一覧に「type: stepper」で追記する。
+// 歩数はセンサー（DeviceMotion）で数え、使えなければ時間×STEPPER_CADENCEで推定。
+// 保存前にステッパー本体のカウンター表示に合わせて直せる
+const STEPPER_CADENCE = 50; // 歩/分（センサーが使えないときの推定値）
+let stepperState = null; // { startTime, plannedSec, elapsedSec, interval, ctx }
+
+function stepperShow(panel) {
+  ["#stepper-setup", "#stepper-run", "#stepper-done"].forEach((s) =>
+    $(s).classList.toggle("hidden", s !== panel));
+}
+
+$("#btn-stepper").addEventListener("click", () => {
+  if (walking) return;
+  stepperShow("#stepper-setup");
+  $("#stepper-overlay").classList.remove("hidden");
+});
+$("#stepper-cancel").addEventListener("click", () =>
+  $("#stepper-overlay").classList.add("hidden"));
+
+document.querySelectorAll("#stepper-mins button").forEach((b) =>
+  b.addEventListener("click", () => {
+    if (b.dataset.min) startStepper(parseInt(b.dataset.min, 10));
+  })
+);
+$("#stepper-custom").addEventListener("click", () => {
+  const raw = prompt("何分うんどうしますか？（1〜180）", "10");
+  if (raw == null) return;
+  const half = String(raw).trim().replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  const v = parseInt(half, 10);
+  if (isNaN(v) || v < 1 || v > 180) { alert("1〜180の数字で入力してください"); return; }
+  startStepper(v);
+});
+
+async function startStepper(min) {
+  stepperState = { startTime: Date.now(), plannedSec: min * 60, ctx: null };
+  // 終了音用のAudioContextはユーザー操作（このタップ）の中で作る必要がある
+  try { stepperState.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+  stepperShow("#stepper-run");
+  updateStepperRemain();
+  stepperState.interval = setInterval(updateStepperRemain, 250);
+  await pedometer.start();
+  if (!IS_NATIVE) acquireWakeLock(); // 画面を消させない（タイマーが止まらないように）
+}
+
+function updateStepperRemain() {
+  if (!stepperState || stepperState.interval == null) return;
+  const elapsed = Math.floor((Date.now() - stepperState.startTime) / 1000);
+  const remain = Math.max(0, stepperState.plannedSec - elapsed);
+  $("#stepper-remain").textContent =
+    `${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, "0")}`;
+  if (remain <= 0) finishStepper(true);
+}
+
+$("#stepper-stop").addEventListener("click", () => finishStepper(false));
+
+function stepperBeep(ctx) {
+  try {
+    if (ctx) {
+      if (ctx.state === "suspended") ctx.resume();
+      for (let i = 0; i < 3; i++) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 880;
+        o.connect(g); g.connect(ctx.destination);
+        const t = ctx.currentTime + i * 0.55;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.4, t + 0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+        o.start(t); o.stop(t + 0.5);
+      }
+    }
+  } catch {}
+  try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]); } catch {}
+}
+
+function finishStepper(completed) {
+  if (!stepperState) return;
+  clearInterval(stepperState.interval);
+  stepperState.interval = null;
+  pedometer.stop();
+  if (!walking) { wakeLock?.release().catch(() => {}); wakeLock = null; }
+
+  let elapsedSec = Math.floor((Date.now() - stepperState.startTime) / 1000);
+  if (completed) { elapsedSec = stepperState.plannedSec; stepperBeep(stepperState.ctx); }
+
+  if (elapsedSec < 30) {
+    alert("30秒未満だったため記録しません");
+    stepperState = null;
+    $("#stepper-overlay").classList.add("hidden");
+    return;
+  }
+
+  stepperState.elapsedSec = elapsedSec;
+  const sensor = pedometer.enabled ? pedometer.steps : 0;
+  const est = sensor > 10 ? sensor : Math.round((elapsedSec / 60) * STEPPER_CADENCE);
+  const m = Math.floor(elapsedSec / 60), s = elapsedSec % 60;
+  $("#stepper-done-time").innerHTML =
+    `うんどう時間は <b>${m}分${s ? s + "秒" : ""}</b> でした`;
+  $("#stepper-steps-input").value = est;
+  stepperShow("#stepper-done");
+}
+
+$("#stepper-save").addEventListener("click", () => {
+  const st = stepperState;
+  if (!st) return;
+  const v = parseInt($("#stepper-steps-input").value, 10);
+  const record = {
+    id: st.startTime,
+    date: new Date(st.startTime).toISOString(),
+    durationSec: st.elapsedSec,
+    distanceM: 0,
+    steps: isNaN(v) || v < 0 ? 0 : Math.min(v, 100000),
+    points: [],
+    type: "stepper",
+  };
+  stepperState = null;
+  $("#stepper-overlay").classList.add("hidden");
+  const walks = store.loadWalks();
+  walks.unshift(record);
+  store.saveWalks(walks);
+  renderHistory();
+  showDoneDialog(record);
+});
+$("#stepper-discard").addEventListener("click", () => {
+  stepperState = null;
+  $("#stepper-overlay").classList.add("hidden");
+});
 
 // ---------- きろく画面 ----------
 function fmtDate(iso) {
@@ -545,7 +678,7 @@ function renderCalendar() {
     el.innerHTML =
       `<span class="d">${day}</span>` +
       `<span class="e ${cond ? "face-" + cond : ""}">${cond ? CONDITIONS[cond].emoji : ""}</span>` +
-      `<span class="km">${info ? info.km.toFixed(1) + "km" : ""}</span>`;
+      `<span class="km">${info ? (info.km >= 0.05 ? info.km.toFixed(1) + "km" : info.steps.toLocaleString() + "歩") : ""}</span>`;
     el.addEventListener("click", () => selectDay(key));
     grid.appendChild(el);
   }
@@ -644,16 +777,19 @@ function renderHistory() {
   }
   list.innerHTML = "";
   shown.forEach((w) => {
+    const isStepper = w.type === "stepper";
     const li = document.createElement("li");
     li.className = "history-item";
     li.innerHTML = `
       <div>
-        <div class="history-date">${fmtDate(w.date)}</div>
-        <div class="history-sub">${(w.distanceM / 1000).toFixed(2)} km ・ ${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分</div>
+        <div class="history-date">${fmtDate(w.date)}${isStepper ? ' <span class="tag-stepper">🦵ステッパー</span>' : ""}</div>
+        <div class="history-sub">${isStepper
+          ? `${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`
+          : `${(w.distanceM / 1000).toFixed(2)} km ・ ${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`}</div>
       </div>
       <div>
         <button class="btn-del" title="削除">🗑</button>
-        <span class="history-arrow">›</span>
+        ${isStepper ? "" : '<span class="history-arrow">›</span>'}
       </div>`;
     li.querySelector(".btn-del").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -662,7 +798,7 @@ function renderHistory() {
       renderHistory();
       renderGoal();
     });
-    li.addEventListener("click", () => showWalkOnMap(w));
+    if (!isStepper) li.addEventListener("click", () => showWalkOnMap(w)); // ステッパーはルートがない
     list.appendChild(li);
   });
 }
