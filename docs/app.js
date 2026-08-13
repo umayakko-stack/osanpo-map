@@ -896,8 +896,15 @@ function todaySavedSteps() {
 
 function renderStepGoal() {
   const bar = $("#step-goal-bar");
+  const chip = $("#btn-set-step-goal");
   const goal = settings.dailyStepGoal;
-  if (!goal || goal <= 0) { bar.classList.add("hidden"); return; }
+  if (!goal || goal <= 0) {
+    bar.classList.add("hidden");
+    // 未設定なら「目標をきめる」ボタンを表示（記録中はライブ統計と重なるので出さない）
+    chip.classList.toggle("hidden", walking);
+    return;
+  }
+  chip.classList.add("hidden");
   bar.classList.remove("hidden");
   const steps = todaySavedSteps() + (walking && walk ? currentSteps() : 0);
   const done = steps >= goal;
@@ -907,6 +914,26 @@ function renderStepGoal() {
     ? `🎉 きょうの目標たっせい！ ${steps.toLocaleString()} / ${goal.toLocaleString()} 歩`
     : `きょうの歩数 ${steps.toLocaleString()} / ${goal.toLocaleString()} 歩`;
 }
+
+// さんぽ画面から直接設定: 🎯ボタン or バーをタップ → 入力ダイアログ
+function askStepGoal() {
+  const raw = prompt(
+    "1日の目標歩数を入れてください（例: 8000）\n0にすると表示を消せます",
+    settings.dailyStepGoal || "8000"
+  );
+  if (raw == null) return; // キャンセル
+  // 全角数字（８０００など）も受け付ける
+  const half = String(raw).trim().replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+  if (half === "") return;
+  const v = parseInt(half, 10);
+  if (isNaN(v) || v < 0) { alert("数字で入力してください（例: 8000）"); return; }
+  settings.dailyStepGoal = Math.min(v, 100000);
+  store.saveSettings(settings);
+  stepGoalInput.value = settings.dailyStepGoal || "";
+  renderStepGoal();
+}
+$("#btn-set-step-goal").addEventListener("click", askStepGoal);
+$("#step-goal-bar").addEventListener("click", askStepGoal);
 
 // せってい
 const stepGoalInput = $("#step-goal-input");
