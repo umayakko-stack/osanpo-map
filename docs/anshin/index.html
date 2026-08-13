@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#c77d8e">
+<title>あんしんノート 🍀</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header id="header">
+  <span class="logo">🍀 あんしんノート</span>
+  <span class="header-note">データはこの端末の中だけ</span>
+</header>
+
+<!-- きょう画面 -->
+<main id="tab-home" class="tab-page active">
+  <div class="page-inner">
+    <div class="greet-card">
+      <div id="greet-date" class="greet-date"></div>
+      <div id="greet-msg" class="greet-msg"></div>
+    </div>
+
+    <button id="btn-wave" class="btn-wave">🌊 不安の波がきた</button>
+    <div class="wave-hint">不安になったら、まずここをタップ。<br>記録して、いっしょに深呼吸しましょう。</div>
+
+    <div id="home-checkup-card" class="card home-checkup"></div>
+
+    <div class="card">
+      <div class="card-title">🌱 これまでのあゆみ</div>
+      <div class="stats-row">
+        <div class="stat"><span id="st-waves" class="stat-num">0</span><span class="stat-label">記録した波</span></div>
+        <div class="stat"><span id="st-calmed" class="stat-num">0</span><span class="stat-label">引いていった波</span></div>
+        <div class="stat"><span id="st-ok" class="stat-num">0</span><span class="stat-label">検診「異常なし」</span></div>
+      </div>
+    </div>
+
+    <div class="card notice-card">
+      <div class="card-title">📌 だいじなこと</div>
+      <p>このアプリは気持ちを整えるためのノートで、医療のアドバイスではありません。</p>
+      <p>出血・痛みなど気になる症状があるときは、次の検診を待たずに、かかりつけの病院へ連絡してください。</p>
+    </div>
+
+    <details class="settings">
+      <summary>⚙️ せってい・バックアップ</summary>
+      <div class="field-label">💾 データのバックアップ・復元
+        <div class="backup-btns">
+          <button id="btn-backup-save" class="btn-small">💾 ファイルに保存</button>
+          <button id="btn-restore-file" class="btn-small">📂 ファイルから復元</button>
+        </div>
+        <input type="file" id="restore-file-input" accept=".json,application/json,text/plain" hidden>
+      </div>
+      <div class="backup-note">記録はすべてこの端末の中だけに保存され、どこにも送信されません。機種変更のときはファイルに保存して移してください。</div>
+    </details>
+  </div>
+</main>
+
+<!-- きろく画面 -->
+<main id="tab-log" class="tab-page">
+  <div class="page-inner">
+    <h2>🌊 不安の波のきろく</h2>
+    <div class="card" id="chart-card">
+      <div class="card-title">波のうつりかわり</div>
+      <svg id="wave-chart" viewBox="0 0 300 120"></svg>
+      <div class="chart-note">●が波の強さ、○はおちついた後。<br>波はきて、そして引いていきます。</div>
+    </div>
+    <ul id="log-list" class="item-list"></ul>
+    <div id="log-empty" class="empty-note hidden">まだ記録はありません。<br>不安の波がきたら「きょう」の画面から記録できます。</div>
+  </div>
+</main>
+
+<!-- おちつく画面 -->
+<main id="tab-calm" class="tab-page">
+  <div class="page-inner">
+    <h2>🍀 おちつく</h2>
+
+    <button class="calm-card" id="btn-open-breath">
+      <span class="calm-emoji">🌬️</span>
+      <span class="calm-body"><span class="calm-name">ゆっくり呼吸</span><span class="calm-desc">4秒すって、6秒はく。からだから不安をゆるめます</span></span>
+    </button>
+
+    <button class="calm-card" id="btn-open-ground">
+      <span class="calm-emoji">🖐️</span>
+      <span class="calm-body"><span class="calm-name">5-4-3-2-1 で「いま」にもどる</span><span class="calm-desc">見えるもの・聞こえる音をさがして、考えごとから離れます</span></span>
+    </button>
+
+    <button class="calm-card" id="btn-open-thought">
+      <span class="calm-emoji">📝</span>
+      <span class="calm-body"><span class="calm-name">こころの整理ノート</span><span class="calm-desc">心配ごとを書き出して、ちょっとちがう角度からながめます</span></span>
+    </button>
+
+    <div id="thought-list-wrap" class="hidden">
+      <h3 class="sub-title">これまでの整理ノート</h3>
+      <ul id="thought-list" class="item-list"></ul>
+    </div>
+  </div>
+</main>
+
+<!-- けんしん画面 -->
+<main id="tab-checkup" class="tab-page">
+  <div class="page-inner">
+    <h2>🏥 けんしん</h2>
+
+    <div class="card">
+      <div class="card-title">つぎの検診</div>
+      <div id="next-checkup-info" class="next-info"></div>
+      <div class="form-row">
+        <input type="date" id="next-date-input">
+        <button id="btn-next-save" class="btn-small">保存</button>
+      </div>
+      <input type="text" id="hospital-input" class="text-input" placeholder="メモ（病院名・先生の名前など）">
+    </div>
+
+    <div class="card">
+      <div class="card-title">検診がおわったら</div>
+      <div class="form-row">
+        <input type="date" id="checkup-date-input">
+      </div>
+      <div class="result-btns">
+        <button id="btn-result-ok" class="result-btn">😊 異常なし</button>
+        <button id="btn-result-follow" class="result-btn">📋 経過観察・その他</button>
+      </div>
+      <input type="text" id="checkup-memo-input" class="text-input" placeholder="メモ（先生に言われたことなど）">
+      <div class="empty-note small">「異常なし」がひとつ増えるたび、安心もひとつ積みあがります。</div>
+    </div>
+
+    <div id="checkup-history-card" class="card hidden">
+      <div class="card-title" id="checkup-history-title">これまでの検診</div>
+      <ul id="checkup-list" class="item-list plain"></ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🗒️ 先生に聞きたいこと・気になること</div>
+      <div class="empty-note small">気になる症状や心配は、ひとりで検索し続けるより、メモして先生に聞くのがいちばん確かです。</div>
+      <div class="form-row">
+        <input type="text" id="symptom-input" class="text-input" placeholder="例: 左足のむくみが気になる">
+        <button id="btn-symptom-add" class="btn-small">追加</button>
+      </div>
+      <ul id="symptom-list" class="item-list plain"></ul>
+    </div>
+  </div>
+</main>
+
+<!-- おまもり画面 -->
+<main id="tab-omamori" class="tab-page">
+  <div class="page-inner">
+    <h2>🎗️ おまもりことば</h2>
+
+    <div class="omamori-display" id="omamori-display"></div>
+    <button id="btn-omamori-next" class="btn-outline">🔀 べつのことばを見る</button>
+
+    <div class="card">
+      <div class="card-title">ことばを追加する</div>
+      <div class="empty-note small">先生に言われて安心したこと、家族のことば、じぶんへの声かけなど、読み返すと心が軽くなることばを貯めておきましょう。</div>
+      <textarea id="omamori-input" rows="2" class="text-input" placeholder="例: 先生「順調ですよ、心配いりません」"></textarea>
+      <button id="btn-omamori-add" class="btn-small">追加する</button>
+    </div>
+
+    <ul id="omamori-list" class="item-list"></ul>
+  </div>
+</main>
+
+<!-- タブバー -->
+<nav id="tabbar">
+  <button class="tab-btn active" data-tab="home">☀️<span>きょう</span></button>
+  <button class="tab-btn" data-tab="log">📖<span>きろく</span></button>
+  <button class="tab-btn" data-tab="calm">🍀<span>おちつく</span></button>
+  <button class="tab-btn" data-tab="checkup">🏥<span>けんしん</span></button>
+  <button class="tab-btn" data-tab="omamori">🎗️<span>おまもり</span></button>
+</nav>
+
+<!-- 不安の波 オーバーレイ -->
+<div id="wave-overlay" class="overlay hidden">
+  <div class="overlay-inner">
+    <button class="overlay-close" id="wave-close">✕</button>
+
+    <div id="wave-step-1" class="wave-step">
+      <div class="overlay-title">いまの不安は、どのくらい？</div>
+      <div class="level-display"><span id="wave-level-num">5</span><span class="level-max">/10</span></div>
+      <input type="range" id="wave-level" min="0" max="10" value="5">
+      <div class="range-labels"><span>おだやか</span><span>とても強い</span></div>
+      <div class="overlay-sub">きっかけはありますか？（なくてもOK）</div>
+      <div class="tag-chips" id="wave-tags">
+        <button data-tag="体の違和感">体の違和感</button>
+        <button data-tag="検診が近い">検診が近い</button>
+        <button data-tag="夜・寝る前">夜・寝る前</button>
+        <button data-tag="ふとした瞬間">ふとした瞬間</button>
+        <button data-tag="ニュース・情報">ニュース・情報</button>
+      </div>
+      <textarea id="wave-memo" rows="2" class="text-input" placeholder="メモ（書きたければ）"></textarea>
+      <button id="wave-record" class="btn-primary">きろくする</button>
+    </div>
+
+    <div id="wave-step-2" class="wave-step hidden">
+      <div class="overlay-title">きろくしました 🍀</div>
+      <p class="overlay-text">不安に気づいて記録できたこと、それ自体がひとつのケアです。<br>このまま、いっしょにゆっくり呼吸してみませんか？</p>
+      <button id="wave-to-breath" class="btn-primary">🌬️ 呼吸でおちつく</button>
+      <button id="wave-skip-breath" class="btn-outline">いまはやめておく</button>
+    </div>
+
+    <div id="wave-step-3" class="wave-step hidden">
+      <div class="overlay-title">いまの不安は、どのくらい？</div>
+      <div class="level-display"><span id="wave-after-num">5</span><span class="level-max">/10</span></div>
+      <input type="range" id="wave-after" min="0" max="10" value="5">
+      <div class="range-labels"><span>おだやか</span><span>とても強い</span></div>
+      <button id="wave-after-save" class="btn-primary">これでおわる</button>
+    </div>
+
+    <div id="wave-step-4" class="wave-step hidden">
+      <div class="overlay-title" id="wave-done-title"></div>
+      <p class="overlay-text" id="wave-done-text"></p>
+      <button id="wave-done-close" class="btn-primary">とじる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 呼吸 オーバーレイ -->
+<div id="breath-overlay" class="overlay hidden">
+  <div class="overlay-inner center">
+    <button class="overlay-close" id="breath-close">✕</button>
+    <div id="breath-setup">
+      <div class="overlay-title">ゆっくり呼吸</div>
+      <p class="overlay-text">まるの動きにあわせて<br>4秒すって、2秒とめて、6秒はきます。<br>鼻からすって、口からゆっくり。</p>
+      <button class="btn-primary" data-cycles="5">1分コース</button>
+      <button class="btn-primary" data-cycles="15">3分コース</button>
+    </div>
+    <div id="breath-run" class="hidden">
+      <div class="breath-circle-wrap"><div id="breath-circle" class="breath-circle"></div><div id="breath-phase" class="breath-phase"></div></div>
+      <div id="breath-count" class="breath-count"></div>
+      <button id="breath-stop" class="btn-outline">おわる</button>
+    </div>
+    <div id="breath-done" class="hidden">
+      <div class="overlay-title">おつかれさまでした 🍀</div>
+      <p class="overlay-text">よくがんばりました。<br>からだの力が、すこしゆるんでいれば十分です。</p>
+      <button id="breath-finish" class="btn-primary">おわる</button>
+    </div>
+  </div>
+</div>
+
+<!-- グラウンディング オーバーレイ -->
+<div id="ground-overlay" class="overlay hidden">
+  <div class="overlay-inner center">
+    <button class="overlay-close" id="ground-close">✕</button>
+    <div class="overlay-title">いま、ここにもどる</div>
+    <div id="ground-card" class="ground-card"></div>
+    <div id="ground-dots" class="ground-dots"></div>
+    <button id="ground-next" class="btn-primary">つぎへ</button>
+  </div>
+</div>
+
+<!-- 整理ノート オーバーレイ -->
+<div id="thought-overlay" class="overlay hidden">
+  <div class="overlay-inner">
+    <button class="overlay-close" id="thought-close">✕</button>
+    <div class="overlay-title">こころの整理ノート</div>
+    <label class="t-label">① いま頭にある心配ごとは？
+      <textarea id="t-worry" rows="2" class="text-input" placeholder="例: からだの違和感が転移だったらどうしよう"></textarea>
+    </label>
+    <label class="t-label">② それは「いま起きていること」？
+      <div class="tag-chips single" id="t-kind">
+        <button data-kind="いま起きていること">いま起きていること</button>
+        <button data-kind="まだ起きていない心配">まだ起きていない心配</button>
+        <button data-kind="わからない">わからない</button>
+      </div>
+    </label>
+    <label class="t-label">③ おなじ心配をしている大切な友だちがいたら、なんて声をかける？
+      <textarea id="t-friend" rows="2" class="text-input" placeholder="例: 検診でちゃんと診てもらってるから、いまは大丈夫だよ"></textarea>
+    </label>
+    <p class="overlay-text small">「わからないこと」はメモして、つぎの検診で先生に聞けば大丈夫。</p>
+    <button id="thought-save" class="btn-primary">保存する</button>
+  </div>
+</div>
+
+<!-- はじめて オーバーレイ -->
+<div id="welcome-overlay" class="overlay hidden">
+  <div class="overlay-inner">
+    <div class="overlay-title">🍀 あんしんノートへようこそ</div>
+    <p class="overlay-text">手術のあと、ふとした瞬間に再発や転移への不安がやってくるのは、とても自然なことです。</p>
+    <p class="overlay-text">このノートは、不安の波を記録して「波はきて、引いていく」ことをたしかめたり、呼吸でおちついたり、検診の安心を積み重ねたりするための場所です。</p>
+    <p class="overlay-text">記録はぜんぶこの端末の中だけ。だれにも送信されません。</p>
+    <p class="overlay-text small">※このアプリは医療のアドバイスではありません。気になる症状があるときは病院に連絡してください。</p>
+    <button id="welcome-start" class="btn-primary">はじめる</button>
+  </div>
+</div>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>

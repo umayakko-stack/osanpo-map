@@ -1,0 +1,12 @@
+{
+  "name": "あんしんノート",
+  "short_name": "あんしん",
+  "description": "手術後の再発・転移への不安とやさしく付き合うためのノート",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#faf5f2",
+  "theme_color": "#c77d8e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
