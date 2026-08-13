@@ -57,6 +57,7 @@ const store = {
       strideCm: 70,                       // 歩幅
       goal: "paris",                      // 目標地点
       home: { lat: 35.6812, lng: 139.7671, label: "東京駅（初期値）" },
+      plainMap: true,                     // 無地マップ（タイルの色を抜く）
     }, s);
   },
   saveSettings(s) {
@@ -619,6 +620,7 @@ function renderHistory() {
   renderCalendar();
   renderWeightChart();
   renderFilterBar();
+  renderBackupInfo();
 
   const list = $("#history-list");
   const shown = historyFilterDate
@@ -801,6 +803,17 @@ strideInput.addEventListener("change", () => {
 function renderHomeText() {
   $("#home-text").textContent = `現在: ${settings.home.label}`;
 }
+
+// 無地マップの適用（さんぽ・もくひょう両方の地図タイルに効く）
+function applyPlainMap() {
+  document.body.classList.toggle("plain-map", !!settings.plainMap);
+  $("#plain-map-toggle").checked = !!settings.plainMap;
+}
+$("#plain-map-toggle").addEventListener("change", (e) => {
+  settings.plainMap = e.target.checked;
+  store.saveSettings(settings);
+  applyPlainMap();
+});
 $("#btn-set-home").addEventListener("click", () => {
   if (!navigator.geolocation) return alert("GPS非対応です");
   navigator.geolocation.getCurrentPosition(
@@ -817,6 +830,127 @@ $("#btn-set-home").addEventListener("click", () => {
     },
     () => alert("現在地を取得できませんでした")
   );
+});
+
+// ---------- バックアップ・復元 ----------
+// 全データ（散歩・体調・体重・設定）を1つのJSONにまとめて書き出し/読み込み。
+// 復元は上書きではなくマージ（散歩はIDで重複排除、体調・体重は日付ごとにバックアップ優先）
+function buildBackup() {
+  return {
+    app: "osanpo-map",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    walks: store.loadWalks(),
+    conditions: store.loadConditions(),
+    weights: store.loadWeights(),
+    settings: store.loadSettings(),
+  };
+}
+
+function renderBackupInfo() {
+  const nWalks = store.loadWalks().length;
+  const nConds = Object.keys(store.loadConditions()).length;
+  const nWeights = Object.keys(store.loadWeights()).length;
+  $("#backup-info").textContent =
+    `いまのデータ: さんぽ${nWalks}件・体調${nConds}件・体重${nWeights}件`;
+}
+
+function restoreBackup(text) {
+  let data;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (!data || data.app !== "osanpo-map" || !Array.isArray(data.walks)) {
+    alert("おさんぽマップのバックアップではないようです。\n内容を確認してください");
+    return;
+  }
+  const when = data.exportedAt ? fmtDate(data.exportedAt) : "日時不明";
+  const nConds = Object.keys(data.conditions || {}).length;
+  const nWeights = Object.keys(data.weights || {}).length;
+  if (!confirm(
+    `バックアップ（${when} 保存）を読み込みます。\n` +
+    `さんぽ${data.walks.length}件・体調${nConds}件・体重${nWeights}件\n\n` +
+    `いまの記録と合体します（同じ記録は増えません）。よろしいですか？`
+  )) return;
+
+  // 散歩: IDで重複排除して追加 → 新しい順に並べ直し
+  const walks = store.loadWalks();
+  const ids = new Set(walks.map((w) => w.id));
+  const added = data.walks.filter(
+    (w) => w && typeof w.id === "number" && Array.isArray(w.points) && !ids.has(w.id)
+  );
+  if (added.length > 0) {
+    walks.push(...added);
+    walks.sort((a, b) => b.id - a.id);
+    store.saveWalks(walks);
+  }
+
+  // 体調・体重: バックアップの値を優先してマージ
+  store.saveConditions(Object.assign(store.loadConditions(), data.conditions || {}));
+  store.saveWeights(Object.assign(store.loadWeights(), data.weights || {}));
+
+  // 設定: バックアップの値を反映
+  if (data.settings && typeof data.settings === "object") {
+    settings = Object.assign(store.loadSettings(), data.settings);
+    store.saveSettings(settings);
+    if (DESTINATIONS[settings.goal]) goalSelect.value = settings.goal;
+    strideInput.value = settings.strideCm;
+    renderHomeText();
+    applyPlainMap();
+  }
+
+  renderHistory();
+  renderGoal();
+  renderBackupInfo();
+  $("#restore-paste-box").classList.add("hidden");
+  alert(`復元しました！\nさんぽを${added.length}件 追加しました`);
+}
+
+// ファイルに保存（Web版のみ。アプリ版のWebViewはダウンロード不可なのでコピーを使う）
+$("#btn-backup-save").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(buildBackup())], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `osanpo-backup-${todayKey()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+if (IS_NATIVE) $("#btn-backup-save").classList.add("hidden");
+
+$("#btn-backup-copy").addEventListener("click", async () => {
+  const text = JSON.stringify(buildBackup());
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("コピーしました！\nメモアプリなどに貼り付けて保存してください");
+  } catch {
+    // クリップボードが使えない場合は貼り付け欄に表示して手動コピーしてもらう
+    const box = $("#restore-paste-box");
+    box.classList.remove("hidden");
+    $("#restore-textarea").value = text;
+    alert("自動コピーできませんでした。\n下の欄の文字を長押しして全部コピーしてください");
+  }
+});
+
+$("#btn-restore-file").addEventListener("click", () => $("#restore-file-input").click());
+$("#restore-file-input").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  e.target.value = ""; // 同じファイルをもう一度選べるように
+  if (!file) return;
+  file.text().then(restoreBackup).catch(() => alert("ファイルを読み込めませんでした"));
+});
+
+$("#btn-restore-paste").addEventListener("click", () => {
+  const box = $("#restore-paste-box");
+  box.classList.toggle("hidden");
+  if (!box.classList.contains("hidden")) {
+    $("#restore-textarea").value = "";
+    $("#restore-textarea").focus();
+  }
+});
+$("#btn-restore-run").addEventListener("click", () => {
+  const text = $("#restore-textarea").value.trim();
+  if (!text) { alert("バックアップの文字を貼り付けてください"); return; }
+  restoreBackup(text);
 });
 
 // ---------- タブ切り替え ----------
@@ -840,6 +974,7 @@ document.querySelectorAll(".tab-btn").forEach((b) =>
 // ---------- 初期化 ----------
 renderHistory();
 renderHomeText();
+applyPlainMap();
 if (!DEMO_MODE && navigator.geolocation) {
   // 起動時に現在地へ移動（記録はしない）
   navigator.geolocation.getCurrentPosition(

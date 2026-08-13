@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -108,6 +108,24 @@
         <button id="btn-set-home" class="btn-small">現在地を出発地点にする</button>
         <span id="home-text" class="home-text"></span>
       </label>
+      <label class="field-label checkbox-label">
+        <input type="checkbox" id="plain-map-toggle">
+        🗺️ 地図をうすい色にする（無地ふう）
+      </label>
+      <div class="field-label backup-section">💾 データのバックアップ・復元
+        <div id="backup-info" class="backup-info"></div>
+        <div class="backup-btns">
+          <button id="btn-backup-save" class="btn-small">💾 ファイルに保存</button>
+          <button id="btn-backup-copy" class="btn-small">📋 コピーする</button>
+          <button id="btn-restore-file" class="btn-small">📂 ファイルから復元</button>
+          <button id="btn-restore-paste" class="btn-small">📝 貼り付けて復元</button>
+        </div>
+        <input type="file" id="restore-file-input" accept=".json,application/json,text/plain" hidden>
+        <div id="restore-paste-box" class="restore-paste-box hidden">
+          <textarea id="restore-textarea" rows="4" placeholder="ここにバックアップの文字を貼り付けてください"></textarea>
+          <button id="btn-restore-run" class="btn-small">この内容で復元する</button>
+        </div>
+      </div>
     </details>
   </div>
 </main>
@@ -121,6 +139,6 @@
 
 <script src="leaflet.js"></script>
 <script src="capacitor-bundle.js?v=7"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
