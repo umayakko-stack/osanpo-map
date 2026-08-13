@@ -9,7 +9,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="leaflet.css">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 
@@ -40,6 +40,47 @@
   <div id="walk-hint" class="walk-hint hidden"></div>
 
   <button id="btn-walk" class="btn-walk">さんぽ<br>スタート</button>
+
+  <!-- ステッパー運動（タイマーで記録） -->
+  <button id="btn-stepper" class="btn-stepper">🦵<br>ステッパー</button>
+
+  <div id="stepper-overlay" class="walk-done-overlay hidden">
+    <div class="walk-done-card">
+      <!-- 時間えらび -->
+      <div id="stepper-setup">
+        <h3>🦵 ステッパーうんどう</h3>
+        <div class="cond-q">何分うんどうする？</div>
+        <div class="stepper-mins" id="stepper-mins">
+          <button data-min="5">5分</button>
+          <button data-min="10">10分</button>
+          <button data-min="15">15分</button>
+          <button data-min="20">20分</button>
+          <button data-min="30">30分</button>
+          <button id="stepper-custom">じぶんで決める</button>
+        </div>
+        <button id="stepper-cancel" class="btn-close btn-gray">やめておく</button>
+      </div>
+      <!-- カウントダウン -->
+      <div id="stepper-run" class="hidden">
+        <h3>🦵 うんどう中…</h3>
+        <div id="stepper-remain" class="stepper-remain">0:00</div>
+        <div class="stepper-note">おわったら音でお知らせして<br>きろく画面に追加します</div>
+        <button id="stepper-stop" class="btn-close btn-red">とちゅうでおわる</button>
+      </div>
+      <!-- 記録確認 -->
+      <div id="stepper-done" class="hidden">
+        <h3>🎉 おつかれさまでした！</h3>
+        <div id="stepper-done-time" class="done-stats"></div>
+        <label class="field-label">歩数 ※ステッパーのカウンター表示に合わせて直せます
+          <input type="number" id="stepper-steps-input" min="0" max="100000" inputmode="numeric">
+        </label>
+        <div class="stepper-done-btns">
+          <button id="stepper-save" class="btn-close">記録する</button>
+          <button id="stepper-discard" class="btn-close btn-gray">記録しない</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- 省電力画面（黒画面・タップで戻る） -->
   <div id="dim-overlay" class="dim-overlay hidden">
@@ -161,6 +202,6 @@
 
 <script src="leaflet.js"></script>
 <script src="capacitor-bundle.js?v=7"></script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body>
 </html>

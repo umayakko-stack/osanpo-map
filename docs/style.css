@@ -135,6 +135,68 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .step-goal-bar:not(.hidden) ~ .live-stats { top: 70px; }
 .step-goal-bar:not(.hidden) ~ .walk-hint { top: 144px; }
 
+/* ステッパー運動 */
+.btn-stepper {
+  position: absolute;
+  bottom: 30px;
+  left: 14px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: #5a7fc0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.5;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3);
+  cursor: pointer;
+  z-index: 400;
+}
+.btn-stepper:active { transform: scale(.95); }
+.btn-stepper.hidden { display: none; }
+.walk-done-overlay.hidden { display: none; }
+#stepper-setup.hidden, #stepper-run.hidden, #stepper-done.hidden { display: none; }
+.stepper-mins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.stepper-mins button {
+  border: none;
+  background: var(--green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: bold;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.stepper-remain {
+  font-size: 58px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin: 10px 0;
+  color: var(--green-dark);
+}
+.stepper-note {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.stepper-done-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+}
+.btn-gray { background: #8a978f !important; }
+.btn-red { background: #e05252 !important; }
+.tag-stepper { font-size: 11px; color: #5a7fc0; font-weight: bold; }
+
 /* リアルタイム統計 */
 .live-stats {
   position: absolute;
