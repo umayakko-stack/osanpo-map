@@ -229,6 +229,8 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .btn-gray { background: #8a978f !important; }
 .btn-red { background: #e05252 !important; }
 .tag-stepper { font-size: 11px; color: #5a7fc0; font-weight: bold; }
+.recover-btns { display: flex; flex-direction: column; gap: 10px; }
+.recover-btns .btn-close { width: 100%; }
 
 /* リアルタイム統計 */
 .live-stats {

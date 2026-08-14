@@ -166,6 +166,7 @@ let walking = false;
 let watchId = null;
 let demoTimer = null;
 let timerInterval = null;
+let activeSaveTimer = null;
 let wakeLock = null;
 
 let walk = null; // { startTime, points: [[lat,lng],...], distance(m) }
@@ -219,7 +220,28 @@ function currentSteps() {
   const estimate = Math.round(walk.distance / (settings.strideCm / 100));
   // センサー値と距離からの推定の大きい方を採用。
   // 画面オフ中はセンサーが止まるので、その間の分は推定値が補う
-  return pedometer.enabled ? Math.max(pedometer.steps, estimate) : estimate;
+  const s = pedometer.enabled ? Math.max(pedometer.steps, estimate) : estimate;
+  // 復元後はセンサーが0から数え直すため、復元時点の歩数を下回らないようにする
+  return Math.max(s, walk.minSteps || 0);
+}
+
+// ---------- 記録中データの退避（画面オフでページが破棄されても復元できるように） ----------
+// スマホのブラウザは画面オフや他アプリへの切替でページを丸ごと破棄することがある。
+// 記録中の状態をlocalStorageに保存しておき、再読み込み時に復元ダイアログを出す
+function saveActiveWalk() {
+  if (!walk) return;
+  try {
+    localStorage.setItem("osanpo_active_walk", JSON.stringify({
+      startTime: walk.startTime,
+      points: walk.points,
+      distance: walk.distance,
+      lastFixAt: walk.lastFixAt,
+      steps: currentSteps(),
+    }));
+  } catch { /* 容量オーバー等は無視（次の保存で再試行される） */ }
+}
+function clearActiveWalk() {
+  localStorage.removeItem("osanpo_active_walk");
 }
 
 function updateLiveStats() {
@@ -274,6 +296,7 @@ function onPosition(lat, lng, accuracy) {
   routeLine.addLatLng([lat, lng]);
   walkMap.panTo([lat, lng]);
   updateLiveStats();
+  saveActiveWalk();
 }
 
 function startGeolocation() {
@@ -345,15 +368,19 @@ async function acquireWakeLock() {
 }
 document.addEventListener("visibilitychange", () => {
   if (!IS_NATIVE && (walking || stepperState) && document.visibilityState === "visible") acquireWakeLock();
+  // 画面オフ・アプリ切替の直前に記録中データを退避（ページ破棄に備える）
+  if (document.visibilityState === "hidden" && walking) saveActiveWalk();
 });
 
-async function startWalk() {
+async function startWalk(resume) {
   walking = true;
-  walk = { startTime: Date.now(), points: [], distance: 0, lastFixAt: Date.now() };
+  // resume: ページ破棄からの復元時に途中データ（points/distance等）を引き継ぐ
+  walk = resume || { startTime: Date.now(), points: [], distance: 0, lastFixAt: Date.now() };
 
   if (routeLine) walkMap.removeLayer(routeLine);
   if (historyLine) { walkMap.removeLayer(historyLine); historyLine = null; }
-  routeLine = L.polyline([], { color: "#2e8b57", weight: 5, opacity: 0.85 }).addTo(walkMap);
+  routeLine = L.polyline(walk.points, { color: "#2e8b57", weight: 5, opacity: 0.85 }).addTo(walkMap);
+  if (walk.points.length > 1) walkMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
   btnWalk.textContent = "おわる";
   btnWalk.classList.add("walking");
@@ -361,6 +388,8 @@ async function startWalk() {
   liveStats.classList.remove("hidden");
   updateLiveStats();
   timerInterval = setInterval(updateLiveStats, 1000);
+  saveActiveWalk();
+  activeSaveTimer = setInterval(saveActiveWalk, 10000); // 歩数の変化も定期的に退避
 
   await pedometer.start();   // iOSの許可ダイアログはここで出る
   startGeolocation();
@@ -370,7 +399,7 @@ async function startWalk() {
   // 記録の継続条件を通知（10秒で消える）
   const hint = $("#walk-hint");
   hint.innerHTML = IS_NATIVE
-    ? "📱 アプリ版: 画面を消してポケットに入れてもOK！<br>記録はバックグラウンドで続きます 🚶"
+    ? "📱 アプリ版: 画面を消してポケットに入れてもOK！<br>記録はバックグラウンドで続きます 🚶<br><small>※省電力モード中は止まることがあります（止まっても再開できます）</small>"
     : wlOk
     ? "📱 画面を消すと記録が止まります（画面は自動で消えません）<br>🔋ボタンで省電力画面にできます"
     : "📱 画面を消すと記録が止まります。<br>スリープしないよう画面をつけたままにしてください";
@@ -384,6 +413,8 @@ function stopWalk() {
   stopGeolocation();
   pedometer.stop();
   clearInterval(timerInterval);
+  clearInterval(activeSaveTimer);
+  clearActiveWalk();
   wakeLock?.release().catch(() => {});
   wakeLock = null;
 
@@ -1300,10 +1331,72 @@ document.querySelectorAll(".tab-btn").forEach((b) =>
   b.addEventListener("click", () => switchTab(b.dataset.tab))
 );
 
+// 起動時: 途中で止まった記録（ページ破棄の生き残り）があれば復元ダイアログを出す
+function checkActiveWalkRecovery() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("osanpo_active_walk") || "null"); } catch {}
+  if (!saved || !Array.isArray(saved.points) || !saved.startTime) { clearActiveWalk(); return; }
+  if ((saved.distance || 0) < 10) { clearActiveWalk(); return; } // ほぼ移動なしは黙って破棄
+
+  const km = (saved.distance / 1000).toFixed(2);
+  const steps = saved.steps || Math.round(saved.distance / (settings.strideCm / 100));
+  const overlay = document.createElement("div");
+  overlay.className = "walk-done-overlay";
+  overlay.innerHTML = `
+    <div class="walk-done-card">
+      <h3>⚠️ とちゅうのさんぽが見つかりました</h3>
+      <div class="done-stats">
+        ${fmtDate(new Date(saved.startTime).toISOString())} スタート<br>
+        きょり <b>${km} km</b> ・ <b>${steps.toLocaleString()} 歩</b><br>
+        <small>画面が消えるなどで記録が中断したようです</small>
+      </div>
+      <div class="recover-btns">
+        <button class="btn-close" id="rec-resume">▶ つづきから再開</button>
+        <button class="btn-close" id="rec-save">💾 ここまでで保存</button>
+        <button class="btn-close btn-gray" id="rec-discard">すてる</button>
+      </div>
+    </div>`;
+  overlay.querySelector("#rec-resume").addEventListener("click", () => {
+    overlay.remove();
+    startWalk({
+      startTime: saved.startTime,
+      points: saved.points,
+      distance: saved.distance,
+      lastFixAt: saved.lastFixAt || Date.now(),
+      minSteps: steps,
+    });
+  });
+  overlay.querySelector("#rec-save").addEventListener("click", () => {
+    overlay.remove();
+    const record = {
+      id: saved.startTime,
+      date: new Date(saved.startTime).toISOString(),
+      durationSec: Math.max(1, Math.floor(((saved.lastFixAt || saved.startTime) - saved.startTime) / 1000)),
+      distanceM: Math.round(saved.distance),
+      steps,
+      points: saved.points,
+    };
+    clearActiveWalk();
+    const walks = store.loadWalks();
+    if (!walks.some((w) => w.id === record.id)) walks.unshift(record);
+    store.saveWalks(walks);
+    renderHistory();
+    renderGoal();
+    showDoneDialog(record);
+  });
+  overlay.querySelector("#rec-discard").addEventListener("click", () => {
+    if (!confirm("この記録をすてますか？")) return;
+    clearActiveWalk();
+    overlay.remove();
+  });
+  document.body.appendChild(overlay);
+}
+
 // ---------- 初期化 ----------
 renderHistory();
 renderHomeText();
 applyPlainMap();
+checkActiveWalkRecovery();
 if (!DEMO_MODE && navigator.geolocation) {
   // 起動時に現在地へ移動（記録はしない）
   navigator.geolocation.getCurrentPosition(
