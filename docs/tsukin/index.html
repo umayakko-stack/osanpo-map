@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2b5fa8">
+<title>通勤タイム 🚗</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header id="header">
+  <span class="logo">🚗 通勤タイム</span>
+  <span id="gps-status" class="gps-status">GPS待機中</span>
+</header>
+
+<main>
+  <div class="page-inner">
+
+    <!-- 日付と時刻 -->
+    <div class="now-card">
+      <div id="now-date" class="now-date"></div>
+      <div id="now-time" class="now-time">--:--:--</div>
+    </div>
+
+    <!-- タイム + スタート/ゴール -->
+    <div class="timer-card">
+      <div class="timer-row">
+        <div id="timer" class="timer">0:00</div>
+        <div class="timer-btns">
+          <button id="btn-start" class="btn-start">スタート</button>
+          <button id="btn-goal" class="btn-goal" disabled>🏁 ゴール</button>
+        </div>
+      </div>
+      <div id="run-info" class="run-info hidden">
+        <span id="run-dist">0.0 km</span>
+        <button id="btn-cancel" class="btn-cancel">記録せずやめる</button>
+      </div>
+    </div>
+
+    <!-- ゴール結果 -->
+    <div id="result-banner" class="result-banner hidden"></div>
+
+    <!-- ランキング -->
+    <div class="rank-card">
+      <h2>🏆 ランキング</h2>
+      <ul id="rank-list" class="rank-list"></ul>
+      <div id="rank-empty" class="empty-note">まだ記録がありません。<br>「スタート」を押して通勤タイムを計ってみましょう。</div>
+    </div>
+
+    <div class="foot-note">タイムはGPSがなくても計測できます。距離とルートはGPSが取れたぶんだけ記録されます。<br>データはこの端末の中だけに保存されます。</div>
+  </div>
+</main>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --blue: #2b5fa8;
+  --blue-dark: #1e4680;
+  --green: #2e9e5b;
+  --red: #d9534f;
+  --bg: #f2f5fa;
+  --card: #ffffff;
+  --text: #2b3442;
+  --muted: #7a8699;
+  --line: #e3e9f2;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ヘッダー */
+#header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--blue); color: #fff;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+}
+.logo { font-weight: bold; font-size: 17px; }
+.gps-status {
+  font-size: 12px; padding: 3px 10px; border-radius: 99px;
+  background: rgba(255, 255, 255, .18);
+}
+.gps-status.ok { background: #37b46b; }
+
+.page-inner {
+  max-width: 480px; margin: 0 auto;
+  padding: 14px 14px calc(30px + env(safe-area-inset-bottom));
+}
+
+.hidden { display: none !important; }
+
+/* 日付と時刻 */
+.now-card {
+  background: var(--card); border-radius: 16px;
+  padding: 14px 16px; text-align: center;
+  box-shadow: 0 1px 4px rgba(30, 60, 110, .08);
+}
+.now-date { font-size: 15px; color: var(--muted); }
+.now-time {
+  font-size: 44px; font-weight: bold; line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+/* タイムとボタン */
+.timer-card {
+  background: var(--card); border-radius: 16px;
+  padding: 16px; margin-top: 12px;
+  box-shadow: 0 1px 4px rgba(30, 60, 110, .08);
+}
+.timer-row { display: flex; align-items: center; gap: 12px; }
+.timer {
+  flex: 1; min-width: 0;
+  font-size: 56px; font-weight: bold; text-align: center;
+  font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  color: var(--muted);
+}
+.timer.running { color: var(--blue-dark); }
+.timer.long { font-size: 36px; }
+
+.timer-btns { display: flex; flex-direction: column; gap: 10px; }
+.timer-btns button {
+  border: none; border-radius: 14px; color: #fff;
+  font-size: 18px; font-weight: bold;
+  padding: 16px 22px; min-width: 128px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(30, 60, 110, .2);
+}
+.timer-btns button:active { transform: translateY(1px); }
+.timer-btns button:disabled {
+  background: #c7cfdb; box-shadow: none; cursor: default;
+}
+.btn-start { background: var(--green); }
+.btn-goal { background: var(--red); }
+
+.run-info {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line);
+  font-size: 16px; font-weight: bold; color: var(--blue-dark);
+}
+.btn-cancel {
+  border: none; background: none; color: var(--muted);
+  font-size: 13px; text-decoration: underline; cursor: pointer; padding: 4px;
+}
+
+/* ゴール結果 */
+.result-banner {
+  margin-top: 12px; padding: 12px 16px; border-radius: 14px;
+  background: #fff7dd; border: 1px solid #f0dd9a;
+  font-size: 16px; line-height: 1.7; text-align: center;
+}
+
+/* ランキング */
+.rank-card {
+  background: var(--card); border-radius: 16px;
+  padding: 16px; margin-top: 12px;
+  box-shadow: 0 1px 4px rgba(30, 60, 110, .08);
+}
+.rank-card h2 { font-size: 17px; margin-bottom: 10px; }
+.rank-list { list-style: none; }
+.rank-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 4px; border-top: 1px solid var(--line);
+}
+.rank-item:first-child { border-top: none; }
+.rank-item.new { background: #fffbe8; border-radius: 10px; }
+.rank-pos {
+  flex: 0 0 46px; text-align: center;
+  font-size: 15px; font-weight: bold; color: var(--muted);
+}
+.rank-item.top3 .rank-pos { font-size: 24px; }
+.rank-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.rank-time {
+  font-size: 20px; font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+.new-tag {
+  font-size: 11px; color: #fff; background: var(--red);
+  border-radius: 99px; padding: 1px 7px; vertical-align: 2px;
+}
+.rank-sub { font-size: 12.5px; color: var(--muted); }
+.rank-del {
+  border: none; background: none; color: #c2cad6;
+  font-size: 16px; padding: 8px; cursor: pointer;
+}
+
+.empty-note {
+  text-align: center; color: var(--muted);
+  font-size: 14px; line-height: 1.8; padding: 14px 0;
+}
+
+.foot-note {
+  margin-top: 14px; font-size: 12px; color: var(--muted);
+  line-height: 1.7; text-align: center;
+}
