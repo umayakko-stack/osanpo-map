@@ -143,7 +143,7 @@ L.control.zoom({ position: "bottomright" }).addTo(walkMap);
 
 let routeLine = null;      // 記録中のルート
 let hereMarker = null;     // 現在地マーカー
-let historyLine = null;    // 履歴表示用ルート
+let historyLines = [];     // 履歴表示用ルート（1日分まとめ表示のため複数持てる）
 
 const hereIcon = L.divIcon({
   className: "",
@@ -378,7 +378,7 @@ async function startWalk(resume) {
   walk = resume || { startTime: Date.now(), points: [], distance: 0, lastFixAt: Date.now() };
 
   if (routeLine) walkMap.removeLayer(routeLine);
-  if (historyLine) { walkMap.removeLayer(historyLine); historyLine = null; }
+  clearHistoryLines();
   routeLine = L.polyline(walk.points, { color: "#2e8b57", weight: 5, opacity: 0.85 }).addTo(walkMap);
   if (walk.points.length > 1) walkMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
 
@@ -668,6 +668,10 @@ function fmtDate(iso) {
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
 function totalDistanceKm() {
   return store.loadWalks().reduce((s, w) => s + w.distanceM, 0) / 1000;
@@ -843,39 +847,103 @@ function renderHistory() {
     return;
   }
   list.innerHTML = "";
+
+  // 1日に何度も運動するので、日付ごとにまとめて表示する
+  const dayOrder = [];
+  const byDay = {};
   shown.forEach((w) => {
-    const isStepper = w.type === "stepper";
-    const li = document.createElement("li");
-    li.className = "history-item";
-    li.innerHTML = `
+    const k = dateKey(new Date(w.date));
+    if (!byDay[k]) { byDay[k] = []; dayOrder.push(k); }
+    byDay[k].push(w);
+  });
+
+  dayOrder.forEach((k) => {
+    const dayWalks = byDay[k];
+    const km = dayWalks.reduce((s, w) => s + w.distanceM, 0) / 1000;
+    const steps = dayWalks.reduce((s, w) => s + w.steps, 0);
+    const nWalk = dayWalks.filter((w) => w.type !== "stepper").length;
+    const nStepper = dayWalks.length - nWalk;
+    const [, m, d] = k.split("-");
+    const dow = "日月火水木金土"[new Date(k + "T00:00:00").getDay()];
+    const counts = [
+      nWalk ? `さんぽ${nWalk}回` : "",
+      nStepper ? `🦵${nStepper}回` : "",
+    ].filter(Boolean).join(" ・ ");
+
+    // 日付ヘッダー（タップでその日の全ルートを色分け表示）
+    const header = document.createElement("li");
+    header.className = "history-day";
+    header.innerHTML = `
       <div>
-        <div class="history-date">${fmtDate(w.date)}${isStepper ? ' <span class="tag-stepper">🦵ステッパー</span>' : ""}</div>
-        <div class="history-sub">${isStepper
-          ? `${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`
-          : `${(w.distanceM / 1000).toFixed(2)} km ・ ${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`}</div>
+        <div class="history-date">📅 ${Number(m)}/${Number(d)}（${dow}）</div>
+        <div class="history-sub">${km >= 0.005 ? km.toFixed(2) + " km ・ " : ""}${steps.toLocaleString()} 歩 ・ ${counts}</div>
       </div>
-      <div>
-        <button class="btn-del" title="削除">🗑</button>
-        ${isStepper ? "" : '<span class="history-arrow">›</span>'}
-      </div>`;
-    li.querySelector(".btn-del").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (!confirm("この記録を削除しますか？")) return;
-      store.saveWalks(store.loadWalks().filter((x) => x.id !== w.id));
-      renderHistory();
-      renderGoal();
+      ${nWalk ? '<span class="history-arrow">›</span>' : ""}`;
+    if (nWalk) header.addEventListener("click", () => showDayOnMap(dayWalks));
+    list.appendChild(header);
+
+    // その日の個別記録（時刻のみ表示）
+    dayWalks.forEach((w) => {
+      const isStepper = w.type === "stepper";
+      const li = document.createElement("li");
+      li.className = "history-item in-day";
+      li.innerHTML = `
+        <div>
+          <div class="history-date">${fmtTime(w.date)}${isStepper ? ' <span class="tag-stepper">🦵ステッパー</span>' : ""}</div>
+          <div class="history-sub">${isStepper
+            ? `${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`
+            : `${(w.distanceM / 1000).toFixed(2)} km ・ ${w.steps.toLocaleString()} 歩 ・ ${Math.floor(w.durationSec / 60)}分`}</div>
+        </div>
+        <div>
+          <button class="btn-del" title="削除">🗑</button>
+          ${isStepper ? "" : '<span class="history-arrow">›</span>'}
+        </div>`;
+      li.querySelector(".btn-del").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm("この記録を削除しますか？")) return;
+        store.saveWalks(store.loadWalks().filter((x) => x.id !== w.id));
+        renderHistory();
+        renderGoal();
+      });
+      if (!isStepper) li.addEventListener("click", () => showWalkOnMap(w)); // ステッパーはルートがない
+      list.appendChild(li);
     });
-    if (!isStepper) li.addEventListener("click", () => showWalkOnMap(w)); // ステッパーはルートがない
-    list.appendChild(li);
   });
 }
 
+function clearHistoryLines() {
+  historyLines.forEach((l) => walkMap.removeLayer(l));
+  historyLines = [];
+}
+
+const DAY_ROUTE_COLORS = ["#ff8c42", "#e05252", "#5a7fc0", "#8e5ac0", "#2e8b57", "#c0a05a"];
+
 function showWalkOnMap(w) {
   switchTab("walk");
-  if (historyLine) walkMap.removeLayer(historyLine);
+  clearHistoryLines();
   if (w.points.length === 0) return;
-  historyLine = L.polyline(w.points, { color: "#ff8c42", weight: 5, opacity: 0.85 }).addTo(walkMap);
-  walkMap.fitBounds(historyLine.getBounds(), { padding: [40, 40] });
+  const line = L.polyline(w.points, { color: "#ff8c42", weight: 5, opacity: 0.85 }).addTo(walkMap);
+  historyLines.push(line);
+  walkMap.fitBounds(line.getBounds(), { padding: [40, 40] });
+}
+
+// 1日分のルートをまとめて表示（散歩ごとに色分け）
+function showDayOnMap(dayWalks) {
+  switchTab("walk");
+  clearHistoryLines();
+  const withPts = dayWalks.filter((w) => w.points && w.points.length > 0);
+  if (withPts.length === 0) return;
+  let bounds = null;
+  withPts.forEach((w, i) => {
+    const line = L.polyline(w.points, {
+      color: DAY_ROUTE_COLORS[i % DAY_ROUTE_COLORS.length],
+      weight: 5,
+      opacity: 0.85,
+    }).addTo(walkMap);
+    historyLines.push(line);
+    bounds = bounds ? bounds.extend(line.getBounds()) : line.getBounds();
+  });
+  walkMap.fitBounds(bounds, { padding: [40, 40] });
 }
 
 // 体調ボタン（きろく画面）

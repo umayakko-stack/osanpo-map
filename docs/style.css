@@ -482,6 +482,24 @@ h2 { font-size: 18px; margin-bottom: 14px; }
   cursor: pointer;
 }
 .history-item:active { background: #eef5f0; }
+/* 日付ごとのまとめヘッダー（タップでその日の全ルート表示） */
+.history-day {
+  background: #e7f2ea;
+  border-left: 4px solid var(--green);
+  border-radius: 12px;
+  padding: 11px 14px;
+  margin: 14px 0 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+.history-day:first-child { margin-top: 0; }
+.history-day:active { background: #d9ebde; }
+.history-day .history-date { font-size: 14px; color: var(--green-dark); }
+.history-day .history-sub { color: #4a5f52; }
+.history-item.in-day { margin-left: 14px; margin-bottom: 8px; }
 .history-date { font-size: 13px; font-weight: bold; }
 .history-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
 .history-arrow { color: var(--muted); font-size: 18px; }
