@@ -1,0 +1,12 @@
+{
+  "name": "通勤タイム",
+  "short_name": "通勤タイム",
+  "description": "自動車通勤のタイムをGPSつきで計測してランキング表示",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2f5fa",
+  "theme_color": "#2b5fa8",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
