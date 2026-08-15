@@ -372,6 +372,22 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden" && walking) saveActiveWalk();
 });
 
+// バッテリー最適化の除外を確認し、未設定なら起動ごとに1回だけ案内する（アプリ版のみ）。
+// 機種の省電力機能がフォアグラウンドサービスを殺して記録が止まる問題への対策。
+// __Battery は MainActivity で登録するローカルプラグイン（native-entry.js経由で公開）
+let batteryAskedThisLaunch = false;
+async function checkBatteryOptimization() {
+  if (!IS_NATIVE || !window.__Battery || batteryAskedThisLaunch) return;
+  try {
+    const { ignoring } = await window.__Battery.isIgnoring();
+    if (ignoring) return;
+    batteryAskedThisLaunch = true;
+    if (confirm("⚠️ 省電力機能で記録が途中で止まることがあります。\nこのアプリをバッテリー最適化の対象から外しますか？\n（次の画面で「許可」を選んでください）")) {
+      await window.__Battery.requestIgnore();
+    }
+  } catch {}
+}
+
 async function startWalk(resume) {
   walking = true;
   // resume: ページ破棄からの復元時に途中データ（points/distance等）を引き継ぐ
@@ -391,6 +407,7 @@ async function startWalk(resume) {
   saveActiveWalk();
   activeSaveTimer = setInterval(saveActiveWalk, 10000); // 歩数の変化も定期的に退避
 
+  await checkBatteryOptimization();
   await pedometer.start();   // iOSの許可ダイアログはここで出る
   startGeolocation();
   // アプリ版は画面オフでも記録が続くのでスリープ防止は不要
