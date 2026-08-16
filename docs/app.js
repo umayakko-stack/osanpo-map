@@ -370,6 +370,14 @@ document.addEventListener("visibilitychange", () => {
   if (!IS_NATIVE && (walking || stepperState) && document.visibilityState === "visible") acquireWakeLock();
   // 画面オフ・アプリ切替の直前に記録中データを退避（ページ破棄に備える）
   if (document.visibilityState === "hidden" && walking) saveActiveWalk();
+  // 長時間バックグラウンドの後、地図の軌跡の描画が消えることがある。
+  // 記録データ(walk.points)は生きているので、画面に戻ったら全点から描き直す
+  if (document.visibilityState === "visible" && walking && walk && routeLine) {
+    routeLine.setLatLngs(walk.points);
+    walkMap.invalidateSize();
+    if (walk.points.length) walkMap.panTo(walk.points[walk.points.length - 1]);
+    updateLiveStats();
+  }
 });
 
 // バッテリー最適化の除外を確認し、未設定なら起動ごとに1回だけ案内する（アプリ版のみ）。
