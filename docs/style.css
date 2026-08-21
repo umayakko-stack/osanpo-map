@@ -8,8 +8,8 @@
   --card: #ffffff;
   --text: #2b3a32;
   --muted: #7a8a80;
-  --header-h: 48px;
-  --tabbar-h: 60px;
+  --header-h: 40px;
+  --tabbar-h: 54px;
 }
 
 html, body {
@@ -60,7 +60,7 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 /* 地図 */
 .map { position: absolute; inset: 0; z-index: 1; }
 .goal-map {
-  height: 260px;
+  height: 340px;
   border-radius: 12px;
   margin-top: 16px;
   z-index: 1;
@@ -505,9 +505,10 @@ h2 { font-size: 18px; margin-bottom: 14px; }
 .history-arrow { color: var(--muted); font-size: 18px; }
 .history-empty { color: var(--muted); text-align: center; padding: 30px 0; font-size: 14px; }
 .btn-del {
-  border: none; background: none; color: #c0392b;
-  font-size: 16px; padding: 6px; cursor: pointer;
+  border: none; background: #fdeeec; border-radius: 10px; color: #c0392b;
+  font-size: 19px; padding: 8px 10px; cursor: pointer;
 }
+.history-day .btn-del { background: #fff; }
 
 /* もくひょう */
 .field-label {
@@ -596,7 +597,7 @@ select, input[type="number"] {
 
 /* 無地マップ: タイルだけ色を抜く（ルート線やマーカーはそのまま） */
 body.plain-map .leaflet-tile-pane {
-  filter: grayscale(1) brightness(1.07) contrast(0.9);
+  filter: grayscale(1) brightness(1.12) contrast(0.8);
 }
 .checkbox-label {
   display: flex;
