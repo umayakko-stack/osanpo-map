@@ -68,6 +68,12 @@ const store = {
 };
 
 let settings = store.loadSettings();
+// 軌跡を見やすくするため白黒マップを既定に（以前OFFにしていた場合も一度だけONへ戻す）
+if (!settings.bwMigrated) {
+  settings.plainMap = true;
+  settings.bwMigrated = true;
+  store.saveSettings(settings);
+}
 
 // 目標地点（組み込み or カスタム）をキーから取得
 function getDest(key) {
@@ -140,6 +146,7 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
 }).addTo(walkMap);
 L.control.zoom({ position: "bottomright" }).addTo(walkMap);
+L.control.scale({ imperial: false, position: "bottomright" }).addTo(walkMap); // 縮尺バー
 
 let routeLine = null;      // 記録中のルート
 let hereMarker = null;     // 現在地マーカー
@@ -265,7 +272,7 @@ function onPosition(lat, lng, accuracy) {
   // 現在地マーカーは常に更新
   if (!hereMarker) {
     hereMarker = L.marker([lat, lng], { icon: hereIcon }).addTo(walkMap);
-    walkMap.setView([lat, lng], 16);
+    walkMap.setView([lat, lng], 18); // 10m単位が見えるくらいの近さをデフォルトに
   } else {
     hereMarker.setLatLng([lat, lng]);
   }
@@ -403,8 +410,8 @@ async function startWalk(resume) {
 
   if (routeLine) walkMap.removeLayer(routeLine);
   clearHistoryLines();
-  routeLine = L.polyline(walk.points, { color: "#2e8b57", weight: 5, opacity: 0.85 }).addTo(walkMap);
-  if (walk.points.length > 1) walkMap.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+  routeLine = L.polyline(walk.points, { color: "#2e8b57", weight: 6, opacity: 0.9 }).addTo(walkMap);
+  if (walk.points.length > 1) walkMap.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
 
   btnWalk.textContent = "おわる";
   btnWalk.classList.add("walking");
@@ -903,7 +910,18 @@ function renderHistory() {
         <div class="history-date">📅 ${Number(m)}/${Number(d)}（${dow}）</div>
         <div class="history-sub">${km >= 0.005 ? km.toFixed(2) + " km ・ " : ""}${steps.toLocaleString()} 歩 ・ ${counts}</div>
       </div>
-      ${nWalk ? '<span class="history-arrow">›</span>' : ""}`;
+      <div>
+        <button class="btn-del" title="この日を削除">🗑</button>
+        ${nWalk ? '<span class="history-arrow">›</span>' : ""}
+      </div>`;
+    header.querySelector(".btn-del").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!confirm(`${Number(m)}/${Number(d)} の記録をすべて削除しますか？（${dayWalks.length}件）`)) return;
+      const ids = new Set(dayWalks.map((w) => w.id));
+      store.saveWalks(store.loadWalks().filter((x) => !ids.has(x.id)));
+      renderHistory();
+      renderGoal();
+    });
     if (nWalk) header.addEventListener("click", () => showDayOnMap(dayWalks));
     list.appendChild(header);
 
@@ -947,9 +965,9 @@ function showWalkOnMap(w) {
   switchTab("walk");
   clearHistoryLines();
   if (w.points.length === 0) return;
-  const line = L.polyline(w.points, { color: "#ff8c42", weight: 5, opacity: 0.85 }).addTo(walkMap);
+  const line = L.polyline(w.points, { color: "#ff8c42", weight: 6, opacity: 0.9 }).addTo(walkMap);
   historyLines.push(line);
-  walkMap.fitBounds(line.getBounds(), { padding: [40, 40] });
+  walkMap.fitBounds(line.getBounds(), { padding: [24, 24] });
 }
 
 // 1日分のルートをまとめて表示（散歩ごとに色分け）
@@ -962,13 +980,13 @@ function showDayOnMap(dayWalks) {
   withPts.forEach((w, i) => {
     const line = L.polyline(w.points, {
       color: DAY_ROUTE_COLORS[i % DAY_ROUTE_COLORS.length],
-      weight: 5,
-      opacity: 0.85,
+      weight: 6,
+      opacity: 0.9,
     }).addTo(walkMap);
     historyLines.push(line);
     bounds = bounds ? bounds.extend(line.getBounds()) : line.getBounds();
   });
-  walkMap.fitBounds(bounds, { padding: [40, 40] });
+  walkMap.fitBounds(bounds, { padding: [24, 24] });
 }
 
 // 体調ボタン（きろく画面）
